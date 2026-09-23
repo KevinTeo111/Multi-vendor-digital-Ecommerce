@@ -5,7 +5,7 @@ import { z } from 'zod';
 
 // Load the repo-root .env first, then an app-local .env (if present) overrides it.
 for (const candidate of [resolve(__dirname, '../../../../.env'), resolve(process.cwd(), '.env')]) {
-  if (existsSync(candidate)) loadDotenv({ path: candidate, override: false });
+  if (existsSync(candidate)) loadDotenv({ path: candidate, override: false, quiet: true });
 }
 
 const schema = z.object({

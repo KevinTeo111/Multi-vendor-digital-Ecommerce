@@ -10,7 +10,8 @@ import {
 import { Plan, Prisma, Subscription, SubscriptionStatus, VendorStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
-import { PAYMENT_GATEWAY, PaymentGateway } from '../payments/gateway/payment-gateway.interface';
+import { randomUUID } from 'node:crypto';
+import { PAYMENT_GATEWAY, PaymentGateway, SubscriptionResult } from '../payments/gateway/payment-gateway.interface';
 import { PlansService } from '../plans/plans.service';
 
 export type SubscriptionWithPlan = Subscription & { plan: Plan };
@@ -74,7 +75,7 @@ export class SubscriptionsService {
    * Subscribes the vendor to a plan. Switching plans cancels the previous subscription
    * immediately (no proration in the MVP) and starts the new one.
    */
-  async subscribe(vendorId: string, planId: string) {
+  async subscribe(vendorId: string, planId: string, cardToken?: string) {
     const vendor = await this.prisma.vendor.findUnique({
       where: { id: vendorId },
       include: { user: { select: { id: true, name: true, email: true } } },
@@ -90,16 +91,22 @@ export class SubscriptionsService {
       throw new ConflictException('You are already subscribed to this plan');
     }
 
-    const result = await this.gateway.createSubscription({
-      vendorId,
-      planId: plan.id,
-      gatewayPlanId: plan.gatewayPlanId,
-      planName: plan.name,
-      priceCents: plan.priceCents,
-      currency: plan.currency,
-      interval: plan.interval,
-      customer: { id: vendor.user.id, name: vendor.user.name, email: vendor.user.email },
-    });
+    // Free plans never touch the gateway: they are activated locally for one billing period
+    // and renewed by the vendor re-subscribing (or by a scheduled job in a later iteration).
+    const result: SubscriptionResult =
+      plan.priceCents === 0
+        ? this.freePlanResult(plan.interval)
+        : await this.gateway.createSubscription({
+            vendorId,
+            planId: plan.id,
+            gatewayPlanId: plan.gatewayPlanId,
+            planName: plan.name,
+            priceCents: plan.priceCents,
+            currency: plan.currency,
+            interval: plan.interval,
+            customer: { id: vendor.user.id, name: vendor.user.name, email: vendor.user.email },
+            cardToken,
+          });
 
     const subscription = await this.prisma.$transaction(async (tx) => {
       if (existing && existing.status === SubscriptionStatus.ACTIVE) {
@@ -211,8 +218,16 @@ export class SubscriptionsService {
     });
   }
 
+  private freePlanResult(interval: 'MONTH' | 'YEAR'): SubscriptionResult {
+    const start = new Date();
+    const end = new Date(start);
+    if (interval === 'YEAR') end.setFullYear(end.getFullYear() + 1);
+    else end.setMonth(end.getMonth() + 1);
+    return { gatewaySubscriptionId: `free_${randomUUID()}`, status: 'active', currentPeriodStart: start, currentPeriodEnd: end };
+  }
+
   private async cancelAtGateway(gatewaySubscriptionId: string | null) {
-    if (!gatewaySubscriptionId) return;
+    if (!gatewaySubscriptionId || gatewaySubscriptionId.startsWith('free_')) return;
     try {
       await this.gateway.cancelSubscription(gatewaySubscriptionId);
     } catch (err) {

@@ -53,7 +53,7 @@ export class MockPaymentGateway implements PaymentGateway {
     return { gatewayTransferId: `mock_tr_${randomUUID()}`, status: 'paid' };
   }
 
-  verifyWebhookSignature(): boolean {
+  verifyWebhook(): boolean {
     return true;
   }
 

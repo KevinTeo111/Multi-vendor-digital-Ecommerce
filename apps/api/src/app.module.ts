@@ -10,18 +10,36 @@ import { SettingsModule } from './modules/settings/settings.module';
 import { VendorsModule } from './modules/vendors/vendors.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { PaymentsModule } from './modules/payments/payments.module';
+import { StorageModule } from './modules/storage/storage.module';
+import { CategoriesModule } from './modules/categories/categories.module';
+import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
+import { ProductsModule } from './modules/products/products.module';
+import { CartModule } from './modules/cart/cart.module';
+import { OrdersModule } from './modules/orders/orders.module';
+import { FinanceModule } from './modules/finance/finance.module';
+import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { HealthController } from './health.controller';
 
 @Module({
   imports: [
+    // infrastructure (global)
     PrismaModule,
     AuditModule,
     SettingsModule,
+    StorageModule,
+    PaymentsModule,
+    // domain
     AuthModule,
     UsersModule,
     PlansModule,
     VendorsModule,
-    PaymentsModule,
+    CategoriesModule,
+    SubscriptionsModule,
+    ProductsModule,
+    CartModule,
+    OrdersModule,
+    FinanceModule,
+    WebhooksModule,
   ],
   controllers: [HealthController],
   providers: [

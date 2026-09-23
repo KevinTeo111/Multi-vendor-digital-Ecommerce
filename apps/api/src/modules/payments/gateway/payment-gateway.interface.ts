@@ -40,6 +40,8 @@ export interface CreateSubscriptionInput {
   currency: string;
   interval: 'MONTH' | 'YEAR';
   customer: GatewayCustomer;
+  /** Card token created client-side with the provider's public key (required by Pagar.me). */
+  cardToken?: string;
 }
 
 export interface SubscriptionResult {
@@ -80,6 +82,8 @@ export type NormalizedWebhookEvent =
   | { kind: 'transfer.failed'; eventId: string; gatewayTransferId: string; reason?: string }
   | { kind: 'ignored'; eventId: string; type: string };
 
+export type WebhookHeaders = Record<string, string | string[] | undefined>;
+
 export interface PaymentGateway {
   readonly name: 'mock' | 'pagarme';
 
@@ -91,7 +95,10 @@ export interface PaymentGateway {
   createRecipient(input: CreateRecipientInput): Promise<{ recipientId: string }>;
   createTransfer(input: TransferInput): Promise<TransferResult>;
 
-  /** Returns false when the signature does not match; the caller must reject the request. */
-  verifyWebhookSignature(rawBody: Buffer, signature: string | undefined): boolean;
+  /**
+   * Returns false when the request cannot be attributed to the provider
+   * (bad HMAC signature, wrong basic-auth credentials, ...). The caller must reject it.
+   */
+  verifyWebhook(rawBody: Buffer, headers: WebhookHeaders): boolean;
   parseWebhook(payload: unknown): NormalizedWebhookEvent;
 }

@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WithdrawalsService } from '../finance/withdrawals.service';
 import { OrdersService } from '../orders/orders.service';
-import { NormalizedWebhookEvent, PAYMENT_GATEWAY, PaymentGateway } from '../payments/gateway/payment-gateway.interface';
+import { NormalizedWebhookEvent, PAYMENT_GATEWAY, PaymentGateway, WebhookHeaders } from '../payments/gateway/payment-gateway.interface';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 
 @Injectable()
@@ -18,8 +18,8 @@ export class WebhooksService {
     @Inject(PAYMENT_GATEWAY) private readonly gateway: PaymentGateway,
   ) {}
 
-  verify(rawBody: Buffer, signature: string | undefined) {
-    return this.gateway.verifyWebhookSignature(rawBody, signature);
+  verify(rawBody: Buffer, headers: WebhookHeaders) {
+    return this.gateway.verifyWebhook(rawBody, headers);
   }
 
   async handle(payload: unknown) {

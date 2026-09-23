@@ -1,4 +1,4 @@
-import { Body, Controller, Headers, HttpCode, Post, Req, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, HttpCode, Post, Req, UnauthorizedException } from '@nestjs/common';
 import type { Request } from 'express';
 import { Public } from '../../common/decorators/public.decorator';
 import { WebhooksService } from './webhooks.service';
@@ -12,21 +12,16 @@ export class WebhooksController {
   constructor(private readonly webhooks: WebhooksService) {}
 
   /**
-   * Payment provider callback. Signature is verified against the raw body; the event
-   * is stored and processed exactly once by (provider, eventId).
+   * Payment provider callback. The request is authenticated by the gateway adapter
+   * (HMAC or basic auth); the event is then stored and processed exactly once.
    */
   @Public()
   @Post('payments')
   @HttpCode(200)
-  async payments(
-    @Req() req: RawBodyRequest,
-    @Body() body: unknown,
-    @Headers('x-hub-signature') hubSignature?: string,
-    @Headers('x-signature') signature?: string,
-  ) {
+  async payments(@Req() req: RawBodyRequest, @Body() body: unknown) {
     const raw = req.rawBody ?? Buffer.from(JSON.stringify(body ?? {}));
-    if (!this.webhooks.verify(raw, hubSignature ?? signature)) {
-      throw new UnauthorizedException('Invalid webhook signature');
+    if (!this.webhooks.verify(raw, req.headers)) {
+      throw new UnauthorizedException('Webhook authentication failed');
     }
     return this.webhooks.handle(body);
   }
