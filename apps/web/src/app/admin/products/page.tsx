@@ -43,7 +43,7 @@ export default function AdminProductsPage() {
                 <tr key={p.id}>
                   <Td>
                     <div className="flex items-center gap-3">
-                      <div className="h-10 w-14 shrink-0 overflow-hidden rounded bg-slate-100 dark:bg-slate-800">
+                      <div className="h-10 w-14 shrink-0 overflow-hidden rounded bg-slate-100">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         {p.thumbnailUrl && <img src={p.thumbnailUrl} alt="" className="h-full w-full object-cover" />}
                       </div>

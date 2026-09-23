@@ -12,3 +12,5 @@ Thumbs.db
 apps/api/uploads/
 
 development_plan.md
+*.png
+*.tsbuildinfo

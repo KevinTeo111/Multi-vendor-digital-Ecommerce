@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { DownloadButton } from '@/components/download-button';
+import { PageContainer } from '@/components/page-container';
 import { RequireRole } from '@/components/require-role';
 import { Alert, Badge, Card, Loading, PageHeader } from '@/components/ui';
 import { api } from '@/lib/api';
@@ -31,7 +32,7 @@ function OrderView() {
       {order.status === 'PAID' && <Alert tone="success">Payment confirmed. Your files are ready to download.</Alert>}
 
       <Card className="mt-4">
-        <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+        <ul className="divide-y divide-slate-100">
           {order.items.map((item) => (
             <li key={item.id} className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center">
               <div className="min-w-0 flex-1">
@@ -48,7 +49,7 @@ function OrderView() {
             </li>
           ))}
         </ul>
-        <div className="mt-4 flex justify-end border-t border-slate-200 pt-3 text-sm dark:border-slate-700">
+        <div className="mt-4 flex justify-end border-t border-slate-200 pt-3 text-sm">
           <span>
             Total <strong>{formatMoney(order.totalCents, order.currency)}</strong>
           </span>
@@ -61,7 +62,9 @@ function OrderView() {
 export default function OrderPage() {
   return (
     <RequireRole roles={['BUYER', 'VENDOR', 'ADMIN']}>
-      <OrderView />
+      <PageContainer>
+        <OrderView />
+      </PageContainer>
     </RequireRole>
   );
 }

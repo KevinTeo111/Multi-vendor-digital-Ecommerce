@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { DownloadButton } from '@/components/download-button';
+import { PageContainer } from '@/components/page-container';
 import { RequireRole } from '@/components/require-role';
 import { Card, EmptyState, LinkButton, Loading, PageHeader } from '@/components/ui';
 import { api } from '@/lib/api';
@@ -28,7 +29,7 @@ function Library() {
           {items.map((item) => (
             <Card key={item.id}>
               <div className="flex gap-4">
-                <div className="h-16 w-24 shrink-0 overflow-hidden rounded bg-slate-100 dark:bg-slate-800">
+                <div className="h-16 w-24 shrink-0 overflow-hidden rounded bg-slate-100">
                   {item.product.thumbnailUrl && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={item.product.thumbnailUrl} alt="" className="h-full w-full object-cover" />
@@ -64,7 +65,9 @@ function Library() {
 export default function LibraryPage() {
   return (
     <RequireRole roles={['BUYER', 'VENDOR', 'ADMIN']}>
-      <Library />
+      <PageContainer>
+        <Library />
+      </PageContainer>
     </RequireRole>
   );
 }

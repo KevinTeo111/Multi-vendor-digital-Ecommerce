@@ -1,23 +1,28 @@
 import type { Metadata } from 'next';
 import { AuthProvider } from '@/components/auth-provider';
+import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
+import { BRAND } from '@/lib/brand';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: { default: 'Digital Marketplace', template: '%s · Digital Marketplace' },
-  description: 'Buy and sell digital products from independent creators.',
+  title: { default: `${BRAND.name} · ${BRAND.tagline}`, template: `%s · ${BRAND.name}` },
+  description: BRAND.description,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen bg-slate-50 antialiased dark:bg-slate-950">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+      </head>
+      <body className="min-h-screen bg-surface">
         <AuthProvider>
           <SiteHeader />
-          <div className="mx-auto w-full max-w-6xl px-4 py-6">{children}</div>
-          <footer className="mt-12 border-t border-slate-200 py-6 text-center text-xs text-slate-500 dark:border-slate-800">
-            Digital Marketplace · Multi-vendor platform for digital products
-          </footer>
+          {children}
+          <SiteFooter />
         </AuthProvider>
       </body>
     </html>

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { PageContainer } from '@/components/page-container';
 import { RequireRole } from '@/components/require-role';
 import { Alert, Button, Card, EmptyState, LinkButton, Loading, PageHeader } from '@/components/ui';
 import { api, ApiError } from '@/lib/api';
@@ -53,10 +54,10 @@ function CartView() {
       ) : (
         <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
           <Card>
-            <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+            <ul className="divide-y divide-slate-100">
               {cart.items.map((item) => (
                 <li key={item.id} className="flex items-center gap-4 py-3">
-                  <div className="h-14 w-20 shrink-0 overflow-hidden rounded bg-slate-100 dark:bg-slate-800">
+                  <div className="h-14 w-20 shrink-0 overflow-hidden rounded bg-slate-100">
                     {item.product.thumbnailUrl && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={item.product.thumbnailUrl} alt="" className="h-full w-full object-cover" />
@@ -95,7 +96,9 @@ function CartView() {
 export default function CartPage() {
   return (
     <RequireRole roles={['BUYER', 'VENDOR', 'ADMIN']}>
-      <CartView />
+      <PageContainer>
+        <CartView />
+      </PageContainer>
     </RequireRole>
   );
 }

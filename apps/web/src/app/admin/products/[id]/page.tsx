@@ -71,7 +71,7 @@ export default function AdminProductDetail() {
         <div className="space-y-6">
           {p.thumbnailUrl && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={p.thumbnailUrl} alt="" className="w-full max-w-xl rounded-lg border border-slate-200 dark:border-slate-700" />
+            <img src={p.thumbnailUrl} alt="" className="w-full max-w-xl rounded-lg border border-slate-200" />
           )}
           {p.previewImageUrls && p.previewImageUrls.length > 0 && (
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">

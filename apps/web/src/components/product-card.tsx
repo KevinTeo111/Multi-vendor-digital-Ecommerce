@@ -1,38 +1,71 @@
 import Link from 'next/link';
 import { formatMoney } from '@/lib/format';
 import type { ProductCard as ProductCardData } from '@/lib/types';
+import { CartIcon, DownloadIcon } from './icons';
+
+const NEW_WINDOW_DAYS = 14;
+
+function badgeFor(product: ProductCardData): { label: string; className: string } | null {
+  if (product.salesCount >= 10) return { label: 'Bestseller', className: 'bg-amber-400 text-navy-900' };
+  if (product.publishedAt && Date.now() - new Date(product.publishedAt).getTime() < NEW_WINDOW_DAYS * 86_400_000) {
+    return { label: 'New', className: 'bg-emerald-500 text-white' };
+  }
+  return null;
+}
 
 export function ProductCard({ product }: { product: ProductCardData }) {
+  const badge = badgeFor(product);
+  const href = `/products/${product.slug}`;
+
   return (
-    <Link
-      href={`/products/${product.slug}`}
-      className="group flex flex-col overflow-hidden rounded-lg border border-slate-200 bg-white transition hover:shadow-md dark:border-slate-700 dark:bg-slate-900"
-    >
-      <div className="aspect-[4/3] w-full bg-slate-100 dark:bg-slate-800">
+    <article className="group relative flex flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-card transition hover:-translate-y-0.5 hover:shadow-lg hover:shadow-brand-500/10">
+      <Link href={href} className="relative block aspect-[4/3] w-full overflow-hidden bg-navy-800" aria-label={product.title}>
         {product.thumbnailUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={product.thumbnailUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
+          <img src={product.thumbnailUrl} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-105" loading="lazy" />
         ) : (
-          <div className="flex h-full items-center justify-center text-xs text-slate-400">No preview</div>
+          <div className="bg-hero flex h-full flex-col items-center justify-center gap-1 text-slate-400">
+            <span className="text-brand-gradient text-lg font-bold">{product.category.name}</span>
+            <span className="text-xs">No preview yet</span>
+          </div>
         )}
-      </div>
-      <div className="flex flex-1 flex-col gap-1 p-3">
-        <h3 className="line-clamp-2 text-sm font-semibold group-hover:underline">{product.title}</h3>
+        {badge && <span className={`absolute left-3 top-3 rounded-full px-2.5 py-1 text-[11px] font-bold ${badge.className}`}>{badge.label}</span>}
+      </Link>
+
+      <div className="flex flex-1 flex-col gap-1 p-4">
+        <Link href={href} className="line-clamp-2 text-sm font-semibold text-slate-900 hover:text-brand-600">
+          {product.title}
+        </Link>
         <p className="text-xs text-slate-500">
-          by {product.vendor.storeName} · {product.category.name}
+          by{' '}
+          <Link href={`/store/${product.vendor.slug}`} className="font-medium text-slate-600 hover:text-brand-600">
+            {product.vendor.storeName}
+          </Link>
         </p>
-        <div className="mt-auto flex items-center justify-between pt-2">
-          <span className="text-base font-bold">{formatMoney(product.priceCents, product.currency)}</span>
-          <span className="text-xs text-slate-500">{product.salesCount} sales</span>
+        <p className="mt-1 flex items-center gap-1 text-xs text-slate-500">
+          <DownloadIcon size={14} className="text-brand-500" />
+          {product.salesCount} {product.salesCount === 1 ? 'sale' : 'sales'}
+          <span className="mx-1 text-slate-300">·</span>
+          {product.category.name}
+        </p>
+        <div className="mt-auto flex items-center justify-between pt-3">
+          <span className="text-lg font-bold text-slate-900">{product.priceCents === 0 ? 'Free' : formatMoney(product.priceCents, product.currency)}</span>
+          <Link
+            href={href}
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:border-brand-500 hover:bg-brand-50 hover:text-brand-600"
+            aria-label={`View ${product.title}`}
+          >
+            <CartIcon size={18} />
+          </Link>
         </div>
       </div>
-    </Link>
+    </article>
   );
 }
 
 export function ProductGrid({ products }: { products: ProductCardData[] }) {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
       {products.map((p) => (
         <ProductCard key={p.id} product={p} />
       ))}

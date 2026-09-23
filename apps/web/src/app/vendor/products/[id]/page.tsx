@@ -188,7 +188,7 @@ function FilesPanel({ product, settings, onChange }: { product: VendorProduct; s
 
 function FilePicker({ label, accept, onPick }: { label: string; accept?: string; onPick: (file: File) => void }) {
   return (
-    <label className="inline-flex cursor-pointer items-center rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-800">
+    <label className="inline-flex cursor-pointer items-center rounded-md border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50">
       {label}
       <input
         type="file"

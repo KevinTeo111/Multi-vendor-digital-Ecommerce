@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { PageContainer } from '@/components/page-container';
 import { RequireRole } from '@/components/require-role';
 import { Badge, Card, EmptyState, LinkButton, Loading, PageHeader, Pagination, Table, Td } from '@/components/ui';
 import { api } from '@/lib/api';
@@ -53,7 +54,9 @@ function OrdersList() {
 export default function OrdersPage() {
   return (
     <RequireRole roles={['BUYER', 'VENDOR', 'ADMIN']}>
-      <OrdersList />
+      <PageContainer>
+        <OrdersList />
+      </PageContainer>
     </RequireRole>
   );
 }

@@ -1,24 +1,24 @@
 'use client';
 
-import { DashboardShell } from '@/components/dashboard-shell';
+import { DashboardShell, type NavItem } from '@/components/dashboard-shell';
 import { RequireRole } from '@/components/require-role';
 
-const nav = [
-  { href: '/admin', label: 'Overview' },
-  { href: '/admin/products', label: 'Product review' },
-  { href: '/admin/withdrawals', label: 'Withdrawals' },
-  { href: '/admin/orders', label: 'Orders' },
-  { href: '/admin/vendors', label: 'Vendors' },
-  { href: '/admin/users', label: 'Users' },
-  { href: '/admin/plans', label: 'Plans' },
-  { href: '/admin/categories', label: 'Categories' },
-  { href: '/admin/settings', label: 'Settings' },
+const nav: NavItem[] = [
+  { href: '/admin', label: 'Dashboard', icon: 'chart' },
+  { href: '/admin/products', label: 'Product Review', icon: 'check' },
+  { href: '/admin/withdrawals', label: 'Withdrawals', icon: 'wallet' },
+  { href: '/admin/orders', label: 'Orders', icon: 'receipt' },
+  { href: '/admin/vendors', label: 'Sellers', icon: 'store' },
+  { href: '/admin/users', label: 'Users', icon: 'users' },
+  { href: '/admin/plans', label: 'Plans', icon: 'card' },
+  { href: '/admin/categories', label: 'Categories', icon: 'layers' },
+  { href: '/admin/settings', label: 'Settings', icon: 'settings' },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <RequireRole roles={['ADMIN']}>
-      <DashboardShell title="Admin" nav={nav}>
+      <DashboardShell title="Admin Panel" nav={nav}>
         {children}
       </DashboardShell>
     </RequireRole>

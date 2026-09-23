@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense, useState, type FormEvent } from 'react';
+import { AuthLayout } from '@/components/auth-layout';
 import { useAuth } from '@/components/auth-provider';
 import { Alert, Button, Field, Input } from '@/components/ui';
 import { ApiError } from '@/lib/api';
@@ -35,15 +36,19 @@ function RegisterForm() {
 
   return (
     <form onSubmit={submit} className="space-y-4">
+      <div>
+        <h2 className="text-2xl font-bold text-slate-900">{role === 'VENDOR' ? 'Create seller account' : 'Create your account'}</h2>
+        <p className="mt-1 text-sm text-slate-500">{role === 'VENDOR' ? 'Open your store in under a minute.' : 'Buy and download digital products instantly.'}</p>
+      </div>
       {error && <Alert tone="error">{error}</Alert>}
 
-      <div className="grid grid-cols-2 gap-2 rounded-md bg-slate-100 p-1 text-sm dark:bg-slate-800">
+      <div className="grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1 text-sm">
         {(['BUYER', 'VENDOR'] as const).map((r) => (
           <button
             key={r}
             type="button"
             onClick={() => setRole(r)}
-            className={`rounded px-3 py-1.5 font-medium ${role === r ? 'bg-white shadow dark:bg-slate-900' : 'text-slate-500'}`}
+            className={`rounded-lg px-3 py-2 font-semibold transition ${role === r ? 'bg-white text-brand-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
           >
             {r === 'BUYER' ? 'I want to buy' : 'I want to sell'}
           </button>
@@ -51,25 +56,25 @@ function RegisterForm() {
       </div>
 
       <Field label="Full name">
-        <Input value={form.name} onChange={set('name')} required minLength={2} autoComplete="name" />
+        <Input value={form.name} onChange={set('name')} required minLength={2} autoComplete="name" placeholder="Jane Doe" />
       </Field>
       {role === 'VENDOR' && (
         <Field label="Store name" hint="Shown publicly on your storefront">
-          <Input value={form.storeName} onChange={set('storeName')} required minLength={2} />
+          <Input value={form.storeName} onChange={set('storeName')} required minLength={2} placeholder="Creative Studio" />
         </Field>
       )}
       <Field label="Email">
-        <Input type="email" value={form.email} onChange={set('email')} required autoComplete="email" />
+        <Input type="email" value={form.email} onChange={set('email')} required autoComplete="email" placeholder="you@example.com" />
       </Field>
       <Field label="Password" hint="At least 8 characters">
-        <Input type="password" value={form.password} onChange={set('password')} required minLength={8} autoComplete="new-password" />
+        <Input type="password" value={form.password} onChange={set('password')} required minLength={8} autoComplete="new-password" placeholder="Create a strong password" />
       </Field>
-      <Button type="submit" loading={loading} className="w-full">
-        Create account
+      <Button type="submit" loading={loading} className="w-full" size="lg">
+        {role === 'VENDOR' ? 'Create seller account' : 'Create account'}
       </Button>
       <p className="text-center text-sm text-slate-500">
         Already registered?{' '}
-        <Link href="/login" className="text-indigo-600 hover:underline">
+        <Link href="/login" className="font-semibold text-brand-600 hover:underline">
           Sign in
         </Link>
       </p>
@@ -79,11 +84,14 @@ function RegisterForm() {
 
 export default function RegisterPage() {
   return (
-    <div className="mx-auto max-w-sm">
-      <h1 className="mb-6 text-2xl font-bold">Create your account</h1>
+    <AuthLayout
+      title="Join our growing community of creators."
+      subtitle="Sell your digital products, reach buyers worldwide, and manage everything from one dashboard."
+      bullets={['Keep the majority of every sale', 'Automatic delivery after payment', 'Easy-to-use seller dashboard']}
+    >
       <Suspense>
         <RegisterForm />
       </Suspense>
-    </div>
+    </AuthLayout>
   );
 }
