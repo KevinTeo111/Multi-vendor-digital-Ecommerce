@@ -1,0 +1,440 @@
+// Digital products marketplace — data model
+// Money is always stored as integer cents. Rates are stored in basis points (1% = 100 bps).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Role {
+  BUYER
+  VENDOR
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  BLOCKED
+}
+
+enum VendorStatus {
+  PENDING // registered, no active subscription yet
+  ACTIVE
+  SUSPENDED // blocked by admin; cannot sell or withdraw
+}
+
+enum BillingInterval {
+  MONTH
+  YEAR
+}
+
+enum SubscriptionStatus {
+  PENDING // created, awaiting first payment
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  EXPIRED
+}
+
+enum ProductStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED // published and visible in the storefront
+  REJECTED
+  UNPUBLISHED // vendor took it offline
+  BLOCKED // admin took it offline
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  PIX
+  BOLETO
+  MOCK
+}
+
+enum LedgerEntryType {
+  SALE_CREDIT // vendor net amount from a paid order item (+)
+  WITHDRAWAL_HOLD // amount reserved when a withdrawal is requested (-)
+  WITHDRAWAL_RELEASE // hold returned when a withdrawal is rejected/failed (+)
+  ADJUSTMENT // manual admin correction (+/-)
+  REFUND_DEBIT // reversal of a sale credit after refund (-)
+}
+
+enum LedgerEntryStatus {
+  PENDING // counts toward pending balance until availableAt
+  AVAILABLE // counts toward available balance
+}
+
+enum WithdrawalStatus {
+  REQUESTED
+  APPROVED
+  PAID
+  REJECTED
+  FAILED
+}
+
+// ---------------------------------------------------------------------------
+// Identity
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  passwordHash String
+  name         String
+  role         Role       @default(BUYER)
+  status       UserStatus @default(ACTIVE)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  vendor              Vendor?
+  cart                Cart?
+  orders              Order[]
+  downloads           Download[]
+  refreshTokens       RefreshToken[]
+  auditLogs           AuditLog[]     @relation("AuditActor")
+  reviewedProducts    Product[]      @relation("ProductReviewer")
+  reviewedWithdrawals Withdrawal[]   @relation("WithdrawalReviewer")
+
+  @@index([role, status])
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Vendors, plans, subscriptions
+// ---------------------------------------------------------------------------
+
+model Vendor {
+  id                 String       @id @default(cuid())
+  userId             String       @unique
+  storeName          String
+  slug               String       @unique
+  description        String?
+  logoKey            String?
+  status             VendorStatus @default(PENDING)
+  gatewayRecipientId String? // Pagar.me recipient id used for payouts
+  payoutDetails      Json? // bank account / pix key captured from the vendor
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscriptions Subscription[]
+  products      Product[]
+  orderItems    OrderItem[]
+  ledgerEntries LedgerEntry[]
+  withdrawals   Withdrawal[]
+
+  @@index([status])
+}
+
+model Plan {
+  id                 String          @id @default(cuid())
+  name               String
+  slug               String          @unique
+  description        String?
+  priceCents         Int
+  currency           String          @default("BRL")
+  interval           BillingInterval @default(MONTH)
+  commissionRateBps  Int // platform commission, e.g. 2000 = 20%
+  maxProducts        Int? // null = unlimited
+  withdrawalsPerWeek Int             @default(1) // withdrawal requests allowed per rolling 7 days
+  isActive           Boolean         @default(true)
+  sortOrder          Int             @default(0)
+  gatewayPlanId      String? // Pagar.me plan id
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  subscriptions Subscription[]
+  orderItems    OrderItem[]
+
+  @@index([isActive, sortOrder])
+}
+
+model Subscription {
+  id                    String             @id @default(cuid())
+  vendorId              String
+  planId                String
+  status                SubscriptionStatus @default(PENDING)
+  currentPeriodStart    DateTime?
+  currentPeriodEnd      DateTime?
+  gatewaySubscriptionId String?            @unique
+  canceledAt            DateTime?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  plan   Plan   @relation(fields: [planId], references: [id])
+
+  @@index([vendorId, status])
+}
+
+// ---------------------------------------------------------------------------
+// Catalog
+// ---------------------------------------------------------------------------
+
+model Category {
+  id        String  @id @default(cuid())
+  name      String
+  slug      String  @unique
+  parentId  String?
+  sortOrder Int     @default(0)
+
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryTree")
+  products Product[]
+
+  @@index([parentId])
+}
+
+model Product {
+  id               String        @id @default(cuid())
+  vendorId         String
+  categoryId       String
+  title            String
+  slug             String        @unique
+  shortDescription String
+  description      String
+  priceCents       Int
+  currency         String        @default("BRL")
+  status           ProductStatus @default(DRAFT)
+  rejectionReason  String?
+  thumbnailKey     String?
+  previewImageKeys String[]      @default([])
+  demoUrl          String?
+  version          String?
+  tags             String[]      @default([])
+  salesCount       Int           @default(0)
+  submittedAt      DateTime?
+  reviewedAt       DateTime?
+  reviewedById     String?
+  publishedAt      DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  vendor     Vendor        @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  category   Category      @relation(fields: [categoryId], references: [id])
+  reviewedBy User?         @relation("ProductReviewer", fields: [reviewedById], references: [id])
+  files      ProductFile[]
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+
+  @@index([vendorId, status])
+  @@index([status, publishedAt])
+  @@index([categoryId, status])
+}
+
+model ProductFile {
+  id         String   @id @default(cuid())
+  productId  String
+  storageKey String   @unique
+  fileName   String
+  sizeBytes  Int
+  mimeType   String
+  checksum   String?
+  isMain     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+// ---------------------------------------------------------------------------
+// Cart and orders
+// ---------------------------------------------------------------------------
+
+model Cart {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  updatedAt DateTime @updatedAt
+
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items CartItem[]
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  cartId    String
+  productId String
+  createdAt DateTime @default(now())
+
+  cart    Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([cartId, productId])
+}
+
+model Order {
+  id              String         @id @default(cuid())
+  orderNumber     String         @unique
+  buyerId         String
+  status          OrderStatus    @default(PENDING)
+  subtotalCents   Int
+  totalCents      Int
+  currency        String         @default("BRL")
+  paymentMethod   PaymentMethod?
+  gatewayOrderId  String?        @unique
+  gatewayChargeId String?
+  failureReason   String?
+  paidAt          DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  buyer User        @relation(fields: [buyerId], references: [id])
+  items OrderItem[]
+
+  @@index([buyerId, status])
+  @@index([status, createdAt])
+}
+
+model OrderItem {
+  id                String   @id @default(cuid())
+  orderId           String
+  productId         String
+  vendorId          String
+  planId            String? // vendor plan at time of sale
+  productTitle      String // snapshot
+  priceCents        Int // snapshot
+  commissionRateBps Int // snapshot of plan commission at time of sale
+  commissionCents   Int
+  vendorNetCents    Int
+  createdAt         DateTime @default(now())
+
+  order         Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product       Product       @relation(fields: [productId], references: [id])
+  vendor        Vendor        @relation(fields: [vendorId], references: [id])
+  plan          Plan?         @relation(fields: [planId], references: [id])
+  downloads     Download[]
+  ledgerEntries LedgerEntry[]
+
+  @@unique([orderId, productId])
+  @@index([vendorId, createdAt])
+}
+
+model Download {
+  id          String   @id @default(cuid())
+  orderItemId String
+  userId      String
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  orderItem OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@index([orderItemId])
+  @@index([userId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Finance
+// ---------------------------------------------------------------------------
+
+model LedgerEntry {
+  id           String            @id @default(cuid())
+  vendorId     String
+  type         LedgerEntryType
+  status       LedgerEntryStatus @default(PENDING)
+  amountCents  Int // signed: credits positive, debits negative
+  availableAt  DateTime? // when a PENDING entry becomes AVAILABLE
+  orderItemId  String?
+  withdrawalId String?
+  description  String?
+  createdAt    DateTime          @default(now())
+
+  vendor     Vendor      @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  orderItem  OrderItem?  @relation(fields: [orderItemId], references: [id])
+  withdrawal Withdrawal? @relation(fields: [withdrawalId], references: [id])
+
+  @@index([vendorId, status])
+  @@index([status, availableAt])
+}
+
+model Withdrawal {
+  id                String           @id @default(cuid())
+  vendorId          String
+  amountCents       Int
+  status            WithdrawalStatus @default(REQUESTED)
+  requestedAt       DateTime         @default(now())
+  reviewedAt        DateTime?
+  reviewedById      String?
+  paidAt            DateTime?
+  gatewayTransferId String?
+  rejectionReason   String?
+  adminNotes        String?
+  updatedAt         DateTime         @updatedAt
+
+  vendor        Vendor        @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  reviewedBy    User?         @relation("WithdrawalReviewer", fields: [reviewedById], references: [id])
+  ledgerEntries LedgerEntry[]
+
+  @@index([vendorId, requestedAt])
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// Platform
+// ---------------------------------------------------------------------------
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+model WebhookEvent {
+  id          String    @id @default(cuid())
+  provider    String
+  eventId     String
+  type        String
+  payload     Json
+  processedAt DateTime?
+  error       String?
+  createdAt   DateTime  @default(now())
+
+  @@unique([provider, eventId])
+  @@index([provider, processedAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  actor User? @relation("AuditActor", fields: [actorId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([actorId, createdAt])
+}
