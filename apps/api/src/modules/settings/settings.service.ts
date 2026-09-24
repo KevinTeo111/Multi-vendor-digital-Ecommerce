@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { SETTING_DEFAULTS, SETTING_KEYS, SettingDefaults, SettingKey } from '@marketplace/shared';
+import { PAYOUT_MODES, SETTING_DEFAULTS, SETTING_KEYS, SettingDefaults, SettingKey } from '@marketplace/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 
 const CACHE_TTL_MS = 10_000;
@@ -44,6 +44,7 @@ export class SettingsService {
       pendingHoldDays: all[SETTING_KEYS.PENDING_HOLD_DAYS],
       maxUploadMb: all[SETTING_KEYS.MAX_UPLOAD_MB],
       allowedFileExtensions: all[SETTING_KEYS.ALLOWED_FILE_EXTENSIONS],
+      payoutMode: all[SETTING_KEYS.PAYOUT_MODE],
     };
   }
 
@@ -94,6 +95,9 @@ export class SettingsService {
     }
     if (typeof expected === 'string') {
       if (typeof value !== 'string' || value.trim().length === 0) fail('expected a non-empty string');
+      if (key === SETTING_KEYS.PAYOUT_MODE && !(PAYOUT_MODES as readonly string[]).includes(value as string)) {
+        fail(`expected one of ${PAYOUT_MODES.join(', ')}`);
+      }
       return;
     }
   }

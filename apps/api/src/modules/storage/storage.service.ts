@@ -104,6 +104,11 @@ export class StorageService {
     }
   }
 
+  /** Server-side upload; used by seed scripts and admin tooling, never by browser uploads. */
+  async putObject(key: string, body: Buffer, contentType: string): Promise<void> {
+    await this.client.send(new PutObjectCommand({ Bucket: this.bucket, Key: key, Body: body, ContentType: contentType }));
+  }
+
   async deleteObject(key: string): Promise<void> {
     try {
       await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }));

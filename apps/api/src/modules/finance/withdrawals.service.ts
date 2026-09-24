@@ -128,8 +128,11 @@ export class WithdrawalsService {
   }
 
   /**
-   * Approves and pays out. The transfer is attempted immediately; if the gateway reports it
-   * as pending the withdrawal stays APPROVED until the transfer webhook arrives.
+   * Approves a withdrawal.
+   * - payout mode "manual": the withdrawal becomes APPROVED; the admin sends the money by PIX/bank
+   *   transfer and then calls markPaid(). Nothing is sent to the gateway.
+   * - payout mode "gateway": the transfer is attempted immediately; if the gateway reports it as
+   *   pending the withdrawal stays APPROVED until the transfer webhook arrives.
    */
   async approve(id: string, adminId: string, notes?: string) {
     const withdrawal = await this.prisma.withdrawal.findUnique({
@@ -142,6 +145,22 @@ export class WithdrawalsService {
     }
     if (!withdrawal.vendor.payoutDetails) {
       throw new BadRequestException('Vendor has no payout details on file');
+    }
+
+    const payoutMode = await this.settings.get(SETTING_KEYS.PAYOUT_MODE);
+    if (payoutMode === 'manual') {
+      const updated = await this.prisma.withdrawal.update({
+        where: { id },
+        data: { status: WithdrawalStatus.APPROVED, reviewedAt: new Date(), reviewedById: adminId, adminNotes: notes },
+      });
+      await this.audit.log({
+        actorId: adminId,
+        action: 'withdrawal.approve',
+        entityType: 'Withdrawal',
+        entityId: id,
+        metadata: { amountCents: withdrawal.amountCents, payoutMode },
+      });
+      return updated;
     }
 
     let recipientId = withdrawal.vendor.gatewayRecipientId;
@@ -188,6 +207,39 @@ export class WithdrawalsService {
       entityType: 'Withdrawal',
       entityId: id,
       metadata: { amountCents: withdrawal.amountCents, transferStatus: transfer.status },
+    });
+    return updated;
+  }
+
+  /**
+   * Records that the money was sent outside the gateway (PIX / bank transfer done by the admin).
+   * Allowed from REQUESTED (approve and pay in one step) or APPROVED.
+   */
+  async markPaid(id: string, adminId: string, reference?: string, notes?: string) {
+    const withdrawal = await this.prisma.withdrawal.findUnique({ where: { id } });
+    if (!withdrawal) throw new NotFoundException('Withdrawal not found');
+    const allowed: WithdrawalStatus[] = [WithdrawalStatus.REQUESTED, WithdrawalStatus.APPROVED];
+    if (!allowed.includes(withdrawal.status)) {
+      throw new BadRequestException(`Withdrawals in status ${withdrawal.status} cannot be marked as paid`);
+    }
+
+    const updated = await this.prisma.withdrawal.update({
+      where: { id },
+      data: {
+        status: WithdrawalStatus.PAID,
+        paidAt: new Date(),
+        reviewedAt: withdrawal.reviewedAt ?? new Date(),
+        reviewedById: withdrawal.reviewedById ?? adminId,
+        gatewayTransferId: reference ? `manual:${reference.trim()}` : 'manual',
+        adminNotes: notes ?? withdrawal.adminNotes,
+      },
+    });
+    await this.audit.log({
+      actorId: adminId,
+      action: 'withdrawal.mark_paid',
+      entityType: 'Withdrawal',
+      entityId: id,
+      metadata: { amountCents: withdrawal.amountCents, reference: reference ?? null },
     });
     return updated;
   }

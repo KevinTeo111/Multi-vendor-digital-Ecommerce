@@ -27,6 +27,12 @@ class ApproveWithdrawalDto {
   @IsOptional() @IsString() @MaxLength(1000) notes?: string;
 }
 
+class MarkPaidDto {
+  /** Bank/PIX transaction reference, shown to the vendor. */
+  @IsOptional() @IsString() @MaxLength(120) reference?: string;
+  @IsOptional() @IsString() @MaxLength(1000) notes?: string;
+}
+
 class RejectWithdrawalDto {
   @IsString() @MinLength(3) @MaxLength(1000) reason: string;
 }
@@ -95,6 +101,11 @@ export class AdminFinanceController {
   @Post('withdrawals/:id/approve')
   approve(@Param('id') id: string, @Body() dto: ApproveWithdrawalDto, @CurrentUser('id') adminId: string) {
     return this.withdrawals.approve(id, adminId, dto.notes);
+  }
+
+  @Post('withdrawals/:id/mark-paid')
+  markPaid(@Param('id') id: string, @Body() dto: MarkPaidDto, @CurrentUser('id') adminId: string) {
+    return this.withdrawals.markPaid(id, adminId, dto.reference, dto.notes);
   }
 
   @Post('withdrawals/:id/reject')

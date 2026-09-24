@@ -12,7 +12,11 @@ async function bootstrap() {
   });
 
   app.setGlobalPrefix('api');
-  app.enableCors({ origin: env.WEB_URL, credentials: true });
+  // Behind Render/Vercel/Cloudflare proxies the client IP arrives in X-Forwarded-For.
+  app.set('trust proxy', 1);
+  // WEB_URL may be a comma-separated list (production domain + Vercel preview URL).
+  const origins = env.WEB_URL.split(',').map((o) => o.trim()).filter(Boolean);
+  app.enableCors({ origin: origins.length === 1 ? origins[0] : origins, credentials: true });
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

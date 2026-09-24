@@ -14,14 +14,19 @@
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "db:migrate": "npm run prisma:migrate -w apps/api",
-    "db:generate": "npm run prisma:generate -w apps/api",
-    "db:seed": "npm run prisma:seed -w apps/api",
-    "db:studio": "npm run prisma:studio -w apps/api",
+    "db:generate": "dotenv -e .env -- npm run prisma:generate -w apps/api",
+    "db:migrate": "dotenv -e .env -- npm run prisma:migrate -w apps/api",
+    "db:deploy": "dotenv -e .env -- npm run migrate:apply -w apps/api",
+    "db:seed": "dotenv -e .env -- npm run prisma:seed -w apps/api",
+    "db:seed:demo": "dotenv -e .env -- npm run prisma:seed:demo -w apps/api",
+    "db:studio": "dotenv -e .env -- npm run prisma:studio -w apps/api",
     "infra:up": "docker compose up -d",
     "infra:down": "docker compose down"
   },
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "dotenv-cli": "^11.0.0"
   }
 }

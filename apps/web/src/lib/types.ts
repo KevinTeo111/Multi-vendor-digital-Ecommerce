@@ -253,6 +253,7 @@ export interface PublicSettings {
   pendingHoldDays: number;
   maxUploadMb: number;
   allowedFileExtensions: string[];
+  payoutMode: 'manual' | 'gateway';
 }
 
 export interface AdminVendor {

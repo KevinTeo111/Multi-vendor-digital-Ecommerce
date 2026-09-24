@@ -12,7 +12,8 @@ const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   API_PORT: z.coerce.number().int().positive().default(4000),
   API_URL: z.string().url().default('http://localhost:4000'),
-  WEB_URL: z.string().url().default('http://localhost:3000'),
+  /** One origin, or a comma-separated list of origins allowed by CORS. */
+  WEB_URL: z.string().min(1).default('http://localhost:3000'),
 
   DATABASE_URL: z.string().min(1),
   REDIS_URL: z.string().default('redis://localhost:6379'),

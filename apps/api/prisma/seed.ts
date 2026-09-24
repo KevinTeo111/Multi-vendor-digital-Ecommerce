@@ -2,8 +2,9 @@
 import { PrismaClient, Role } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { SETTING_DEFAULTS } from '@marketplace/shared';
+import { createPrismaAdapter } from '../src/prisma/adapter';
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({ adapter: createPrismaAdapter() });
 
 async function main() {
   // ---- Settings defaults (only inserted when missing) ----

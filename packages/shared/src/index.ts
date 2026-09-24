@@ -9,7 +9,12 @@ export const SETTING_KEYS = {
   DEFAULT_COMMISSION_BPS: 'finance.default_commission_bps',
   MAX_UPLOAD_MB: 'products.max_upload_mb',
   ALLOWED_FILE_EXTENSIONS: 'products.allowed_file_extensions',
+  /** "manual": admin pays vendors by PIX/bank and marks the withdrawal paid. "gateway": transfer through the payment provider. */
+  PAYOUT_MODE: 'finance.payout_mode',
 } as const;
+
+export const PAYOUT_MODES = ['manual', 'gateway'] as const;
+export type PayoutMode = (typeof PAYOUT_MODES)[number];
 
 export type SettingKey = (typeof SETTING_KEYS)[keyof typeof SETTING_KEYS];
 
@@ -21,6 +26,7 @@ export interface SettingDefaults {
   [SETTING_KEYS.DEFAULT_COMMISSION_BPS]: number;
   [SETTING_KEYS.MAX_UPLOAD_MB]: number;
   [SETTING_KEYS.ALLOWED_FILE_EXTENSIONS]: string[];
+  [SETTING_KEYS.PAYOUT_MODE]: PayoutMode;
 }
 
 export const SETTING_DEFAULTS: SettingDefaults = {
@@ -31,6 +37,7 @@ export const SETTING_DEFAULTS: SettingDefaults = {
   [SETTING_KEYS.DEFAULT_COMMISSION_BPS]: 2_000, // 20%
   [SETTING_KEYS.MAX_UPLOAD_MB]: 500,
   [SETTING_KEYS.ALLOWED_FILE_EXTENSIONS]: ['zip', 'rar', '7z', 'pdf', 'epub', 'mp4', 'mp3'],
+  [SETTING_KEYS.PAYOUT_MODE]: 'manual',
 };
 
 /** 1% = 100 basis points. */

@@ -4,14 +4,14 @@ Multi-vendor e-commerce platform for digital products (inspired by CodeCanyon).
 
 ## Stack
 
-| Layer    | Technology                                  |
-| -------- | ------------------------------------------- |
-| Web      | Next.js 15 (App Router), React 19, Tailwind 4 |
-| API      | NestJS 11, TypeScript, class-validator      |
-| Database | PostgreSQL 16 + Prisma 6                    |
-| Cache    | Redis (reserved for sessions/jobs)          |
-| Storage  | S3-compatible (Cloudflare R2 / S3 / MinIO)  |
-| Payments | Pagar.me v5 gateway adapter + mock gateway   |
+| Layer    | Technology                                           |
+| -------- | ---------------------------------------------------- |
+| Web      | Next.js 15 (App Router), React 19, Tailwind 4        |
+| API      | NestJS 11, TypeScript, class-validator               |
+| Database | PostgreSQL + Prisma 6 (Rust-free: pg driver adapter) |
+| Cache    | Redis (reserved for sessions/jobs)                   |
+| Storage  | S3-compatible (Cloudflare R2 / S3 / MinIO)           |
+| Payments | Pagar.me v5 gateway adapter + mock gateway           |
 
 ## Repository layout
 
@@ -30,7 +30,7 @@ npm install
 npm run infra:up                 # Postgres, Redis, MinIO
 npm run build -w packages/shared
 npm run db:generate
-npm run db:migrate               # applies prisma/migrations
+npm run db:deploy                # applies prisma/migrations (db:migrate for local schema changes)
 npm run db:seed                  # admin user, 3 plans, categories, settings
 npm run dev:api                  # http://localhost:4000/api
 npm run dev:web                  # http://localhost:3000
@@ -50,7 +50,20 @@ The API reads the repo-root `.env`. Next.js reads `apps/web/.env.local`; the def
 4. Register a buyer, add to cart, pay (`/cart` → mock gateway marks it paid immediately), download from `/library`.
 5. Vendor sees the sale under `/vendor/finance` as a pending credit; lower `finance.pending_hold_days`
    in `/admin/settings` to 0 to make it available immediately, then request a withdrawal.
-6. Admin approves at `/admin/withdrawals`; the mock transfer completes instantly.
+6. Admin approves at `/admin/withdrawals`. In the default **manual payout mode** the admin then sends
+   the money by PIX or bank transfer and clicks **Mark as paid**. Switching `finance.payout_mode` to
+   `gateway` makes approval trigger a transfer through the payment provider instead.
+
+### Demo content
+
+```bash
+npm run db:seed:demo
+```
+
+Creates the seller **Creative Studio** (`demo-seller@marketplace.local`) with an active Pro plan, eight
+approved products with thumbnails and downloadable files in object storage, an available balance, and
+the buyer `demo-buyer@marketplace.local` with a paid order. Password for both: `Demo1234!`. Re-running
+the command resets the demo accounts.
 
 ## Core business rules
 
@@ -84,6 +97,20 @@ The API reads the repo-root `.env`. Next.js reads `apps/web/.env.local`; the def
 | Vendor | `/vendors/me`, `/vendor/products…` (CRUD, files, images, submit, unpublish), `/vendor/subscription`, `/vendor/sales`, `/vendor/finance/{balance,ledger,withdrawals,withdrawals/eligibility}` |
 | Admin | `/admin/{users,vendors,products,orders,plans,categories,subscriptions,settings}`, `/admin/finance/{summary,withdrawals,vendors/:id/ledger}` |
 | Webhooks | `POST /webhooks/payments` |
+
+## Database notes
+
+- Prisma runs in Rust-free mode (`queryCompiler` + `driverAdapters` with `@prisma/adapter-pg`), so no
+  native engine binary is used at runtime. This was required because Prisma's native engines crash on
+  some Windows machines with exception `0xC000001D`.
+- `npm run db:deploy` applies `prisma/migrations` through a small pg-based runner that writes the same
+  `_prisma_migrations` table Prisma uses, so `prisma migrate deploy` stays interchangeable on servers.
+- To create a new migration without the native engine, keep a copy of the previous schema and diff:
+  `npx prisma migrate diff --from-schema-datamodel prisma/schema.prev.prisma --to-schema-datamodel prisma/schema.prisma --script`
+  then save the output as `prisma/migrations/<timestamp>_<name>/migration.sql`.
+- Neon: use the direct host (no `-pooler`) and remove `channel_binding=require` from the URL.
+- Interactive transactions default to a 30 s timeout (see `src/prisma/adapter.ts`) because remote
+  databases add latency to every round trip.
 
 ## Testing
 
