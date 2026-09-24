@@ -1,14 +1,16 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useT } from '@/i18n/client';
 import { BRAND } from '@/lib/brand';
 
-export function Logo({ href = '/', compact = false, light = false }: { href?: string; compact?: boolean; light?: boolean }) {
+/** Brand mark + wordmark. The mark is /public/logo.png (transparent background, works on light and dark). */
+export function Logo({ href = '/', compact = false, light = false, size = 40 }: { href?: string; compact?: boolean; light?: boolean; size?: number }) {
   const t = useT();
   return (
     <Link href={href} className="flex items-center gap-2.5" aria-label={`${BRAND.name} home`}>
-      <span className="bg-brand-gradient flex h-9 w-9 items-center justify-center rounded-xl text-base font-black text-white shadow-glow">D</span>
+      <Image src="/logo.png" alt={BRAND.name} width={size} height={size} priority className="shrink-0 object-contain" />
       {!compact && (
         <span className="leading-tight">
           <span className={`block text-base font-extrabold tracking-tight ${light ? 'text-white' : 'text-navy-900'}`}>{BRAND.name}</span>

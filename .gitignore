@@ -14,3 +14,7 @@ apps/api/uploads/
 development_plan.md
 *.png
 *.tsbuildinfo
+
+# Brand assets shipped with the web app (override the global *.png ignore)
+!apps/web/public/logo.png
+!apps/web/src/app/icon.png
