@@ -36,8 +36,6 @@ services:
         value: 15m
       - key: JWT_REFRESH_TTL
         value: 30d
-      - key: STORAGE_DRIVER
-        value: s3
       - key: S3_ENDPOINT
         sync: false # https://<account-id>.r2.cloudflarestorage.com
       - key: S3_REGION

@@ -23,7 +23,6 @@ const schema = z.object({
   JWT_ACCESS_TTL: z.string().default('15m'),
   JWT_REFRESH_TTL: z.string().default('30d'),
 
-  STORAGE_DRIVER: z.enum(['s3', 'local']).default('s3'),
   S3_ENDPOINT: z.string().optional(),
   S3_REGION: z.string().default('auto'),
   S3_BUCKET: z.string().default('marketplace-files'),

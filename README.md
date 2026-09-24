@@ -24,14 +24,18 @@ docker-compose.yml  Postgres, Redis, MinIO (with bucket bootstrap)
 
 ## Getting started
 
+You need a PostgreSQL database and an S3-compatible bucket. Either use hosted free tiers (Neon +
+Cloudflare R2, no Docker needed) or run `npm run infra:up` to start Postgres and MinIO locally with
+Docker. Put the connection details in `.env`.
+
 ```bash
-cp .env.example .env             # adjust secrets
+cp .env.example .env             # fill DATABASE_URL, S3_* and secrets
 npm install
-npm run infra:up                 # Postgres, Redis, MinIO
 npm run build -w packages/shared
 npm run db:generate
-npm run db:deploy                # applies prisma/migrations (db:migrate for local schema changes)
+npm run db:deploy                # applies prisma/migrations
 npm run db:seed                  # admin user, 3 plans, categories, settings
+npm run db:seed:demo             # optional demo seller, products and buyer
 npm run dev:api                  # http://localhost:4000/api
 npm run dev:web                  # http://localhost:3000
 ```
