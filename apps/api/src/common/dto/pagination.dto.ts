@@ -1,16 +1,18 @@
 import { IsInt, IsOptional, Max, Min } from 'class-validator';
 
 export class PaginationDto {
+  // Explicit types are required: implicit query-string conversion relies on the emitted
+  // design:type metadata, which is `Object` for inferred initializers.
   @IsOptional()
   @IsInt()
   @Min(1)
-  page = 1;
+  page: number = 1;
 
   @IsOptional()
   @IsInt()
   @Min(1)
   @Max(100)
-  pageSize = 20;
+  pageSize: number = 20;
 
   get skip() {
     return (this.page - 1) * this.pageSize;

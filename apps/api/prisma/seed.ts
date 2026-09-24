@@ -19,15 +19,12 @@ async function main() {
   // ---- Admin user ----
   const adminEmail = process.env.SEED_ADMIN_EMAIL ?? 'admin@marketplace.local';
   const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? 'Admin123!';
+  const passwordHash = await bcrypt.hash(adminPassword, 12);
   await prisma.user.upsert({
     where: { email: adminEmail },
-    create: {
-      email: adminEmail,
-      name: 'Platform Admin',
-      role: Role.ADMIN,
-      passwordHash: await bcrypt.hash(adminPassword, 12),
-    },
-    update: {},
+    create: { email: adminEmail, name: 'Platform Admin', role: Role.ADMIN, passwordHash },
+    // An explicitly provided password always wins, so re-running the seed rotates the admin password.
+    update: process.env.SEED_ADMIN_PASSWORD ? { passwordHash, status: 'ACTIVE' } : {},
   });
 
   // ---- Plans ----

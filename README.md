@@ -120,6 +120,17 @@ npm run typecheck           # all workspaces
 npm run build               # all workspaces
 ```
 
+## Deployment notes
+
+- API on Render (free instance): build command
+  `npm ci --include=dev && npm run build -w packages/shared && npm run prisma:generate -w apps/api && npm run build -w apps/api`,
+  start command `node apps/api/dist/main.js`, health check `/api/health`, env vars as listed in `render.yaml`.
+  `--include=dev` is required because `NODE_ENV=production` makes npm skip the build tools otherwise.
+  Run migrations from a developer machine: `DATABASE_URL="<prod>" npm run migrate:apply -w apps/api`.
+- Web on Vercel: root directory `apps/web`, env `NEXT_PUBLIC_API_URL` and `API_URL` set to the API base URL
+  (no trailing slash, no `/api`). Then set `WEB_URL` on Render to the Vercel site URL and add that URL to the
+  R2 bucket CORS policy.
+
 ## Payment gateway
 
 `PAYMENT_GATEWAY=mock` (default) completes every payment, subscription and transfer instantly.

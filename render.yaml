@@ -1,14 +1,17 @@
-# Render Blueprint for the API. The web app is deployed on Vercel from apps/web.
+# Render Blueprint for the API (reference). Blueprints require a card on file even for free plans;
+# without a card create the service manually with the same values (see README, Deployment).
+# The web app is deployed on Vercel from apps/web.
 # Docs: https://render.com/docs/blueprint-spec
 services:
   - type: web
     name: marketplace-api
     runtime: node
-    plan: starter # free tier sleeps after 15 min idle; starter keeps the API warm
+    plan: free # sleeps after 15 min idle (30-60 s cold start); "starter" (7 USD/mo) keeps it warm but needs a card
     region: ohio # pick the region closest to your Neon database
     rootDir: .
-    buildCommand: npm ci && npm run build -w packages/shared && npm run prisma:generate -w apps/api && npm run build -w apps/api
-    preDeployCommand: npm run migrate:apply -w apps/api
+    buildCommand: npm ci --include=dev && npm run build -w packages/shared && npm run prisma:generate -w apps/api && npm run build -w apps/api
+    # Pre-deploy commands need a paid plan. On the free plan run migrations from your PC:
+    #   DATABASE_URL="<prod url>" npm run migrate:apply -w apps/api
     startCommand: node apps/api/dist/main.js
     healthCheckPath: /api/health
     autoDeploy: true
