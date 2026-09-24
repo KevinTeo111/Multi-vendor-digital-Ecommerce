@@ -2,11 +2,13 @@
 
 import { useState } from 'react';
 import { Badge, Card, EmptyState, Input, Loading, PageHeader, Pagination, Select, Table, Td } from '@/components/ui';
+import { useLocale } from '@/i18n/client';
 import { formatDate, formatMoney } from '@/lib/format';
 import type { Order, Paginated } from '@/lib/types';
 import { useFetch } from '@/lib/use-fetch';
 
 export default function AdminOrdersPage() {
+  const { t, status: statusLabel } = useLocale();
   const [status, setStatus] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -14,15 +16,15 @@ export default function AdminOrdersPage() {
 
   return (
     <div>
-      <PageHeader title="Orders" />
+      <PageHeader title={t('admin.ordersTitle')} />
       <Card
         actions={
           <div className="flex gap-2">
-            <Input placeholder="Order number or buyer email" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="w-56" />
-            <Select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="w-auto" aria-label="Status">
+            <Input placeholder={t('admin.searchOrder')} value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="w-56" />
+            <Select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="w-auto" aria-label={t('common.status')}>
               {['', 'PAID', 'PENDING', 'FAILED', 'CANCELED', 'REFUNDED'].map((s) => (
                 <option key={s} value={s}>
-                  {s || 'All statuses'}
+                  {s ? statusLabel(s) : t('common.allStatuses')}
                 </option>
               ))}
             </Select>
@@ -32,10 +34,10 @@ export default function AdminOrdersPage() {
         {list.loading && !list.data ? (
           <Loading />
         ) : !list.data || list.data.items.length === 0 ? (
-          <EmptyState title="No orders" />
+          <EmptyState title={t('admin.noOrders')} />
         ) : (
           <>
-            <Table headers={['Order', 'Date', 'Buyer', 'Items', 'Total', 'Commission', 'Status']}>
+            <Table headers={[t('orders.order'), t('common.date'), t('admin.buyer'), t('orders.items'), t('orders.total'), t('vendor.commission'), t('common.status')]}>
               {list.data.items.map((o) => (
                 <tr key={o.id}>
                   <Td className="font-mono text-xs">{o.orderNumber}</Td>

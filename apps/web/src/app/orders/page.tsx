@@ -1,50 +1,50 @@
 'use client';
 
-import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { PageContainer } from '@/components/page-container';
 import { RequireRole } from '@/components/require-role';
-import { Badge, Card, EmptyState, LinkButton, Loading, PageHeader, Pagination, Table, Td } from '@/components/ui';
-import { api } from '@/lib/api';
+import { Badge, Card, EmptyState, LinkButton, ListRow, Loading, PageHeader, Pagination } from '@/components/ui';
+import { useT } from '@/i18n/client';
 import { formatDate, formatMoney } from '@/lib/format';
+import { useRealtimeEvent } from '@/lib/realtime';
 import type { Order, Paginated } from '@/lib/types';
+import { useFetch } from '@/lib/use-fetch';
 
 function OrdersList() {
+  const t = useT();
   const [page, setPage] = useState(1);
-  const [data, setData] = useState<Paginated<Order> | null>(null);
+  const data = useFetch<Paginated<Order>>('/orders', { page, pageSize: 20 });
+  useRealtimeEvent('order.paid', () => data.reload());
 
-  useEffect(() => {
-    api<Paginated<Order>>('/orders', { query: { page, pageSize: 20 } }).then(setData);
-  }, [page]);
-
-  if (!data) return <Loading />;
+  if (!data.data) return <Loading />;
 
   return (
     <div>
-      <PageHeader title="Your orders" actions={<LinkButton href="/library" variant="secondary">My downloads</LinkButton>} />
-      {data.items.length === 0 ? (
-        <EmptyState title="No orders yet" action={<LinkButton href="/products">Browse products</LinkButton>} />
+      <PageHeader title={t('orders.title')} actions={<LinkButton href="/library" variant="secondary" arrow>{t('orders.myDownloads')}</LinkButton>} />
+      {data.data.items.length === 0 ? (
+        <EmptyState title={t('orders.empty')} action={<LinkButton href="/products" arrow>{t('cart.browse')}</LinkButton>} />
       ) : (
-        <Card>
-          <Table headers={['Order', 'Date', 'Items', 'Total', 'Status', '']}>
-            {data.items.map((o) => (
-              <tr key={o.id}>
-                <Td className="font-mono text-xs">{o.orderNumber}</Td>
-                <Td>{formatDate(o.createdAt, true)}</Td>
-                <Td>{o.items.length}</Td>
-                <Td>{formatMoney(o.totalCents, o.currency)}</Td>
-                <Td>
-                  <Badge status={o.status} />
-                </Td>
-                <Td>
-                  <Link href={`/orders/${o.id}`} className="text-indigo-600 hover:underline">
-                    View
-                  </Link>
-                </Td>
-              </tr>
+        <Card padded={false}>
+          <div className="px-5">
+            {data.data.items.map((o) => (
+              <ListRow
+                key={o.id}
+                href={`/orders/${o.id}`}
+                meta={formatDate(o.createdAt)}
+                tag={<span className="font-mono text-xs">{o.orderNumber}</span>}
+                title={o.items.map((i) => i.productTitle).join(', ')}
+                trailing={
+                  <span className="flex items-center gap-3">
+                    <span className="font-semibold text-navy-900">{formatMoney(o.totalCents, o.currency)}</span>
+                    <Badge status={o.status} />
+                  </span>
+                }
+              />
             ))}
-          </Table>
-          <Pagination page={data.page} totalPages={data.totalPages} onChange={setPage} />
+          </div>
+          <div className="px-5 pb-4">
+            <Pagination page={data.data.page} totalPages={data.data.totalPages} onChange={setPage} />
+          </div>
         </Card>
       )}
     </div>

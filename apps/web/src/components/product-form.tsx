@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { Alert, Button, Field, Input, Select, Textarea } from '@/components/ui';
+import { useT } from '@/i18n/client';
 import type { Category, VendorProduct } from '@/lib/types';
 
 export interface ProductFormValues {
@@ -21,7 +22,7 @@ export function ProductForm({
   onSubmit,
   busy,
   error,
-  submitLabel = 'Save',
+  submitLabel,
 }: {
   categories: Category[];
   initial?: Partial<VendorProduct>;
@@ -30,6 +31,7 @@ export function ProductForm({
   error?: string | null;
   submitLabel?: string;
 }) {
+  const t = useT();
   const [form, setForm] = useState({
     title: initial?.title ?? '',
     categoryId: initial?.categoryId ?? categories[0]?.id ?? '',
@@ -41,8 +43,7 @@ export function ProductForm({
     tags: (initial?.tags ?? []).join(', '),
   });
 
-  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
-    setForm({ ...form, [k]: e.target.value });
+  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setForm({ ...form, [k]: e.target.value });
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -56,7 +57,7 @@ export function ProductForm({
       version: form.version || undefined,
       tags: form.tags
         .split(',')
-        .map((t) => t.trim())
+        .map((x) => x.trim())
         .filter(Boolean),
     });
   };
@@ -64,11 +65,11 @@ export function ProductForm({
   return (
     <form onSubmit={submit} className="space-y-4">
       {error && <Alert tone="error">{error}</Alert>}
-      <Field label="Title">
+      <Field label={t('vendor.formTitle')}>
         <Input value={form.title} onChange={set('title')} required minLength={3} maxLength={140} />
       </Field>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Category">
+        <Field label={t('vendor.formCategory')}>
           <Select value={form.categoryId} onChange={set('categoryId')} required>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
@@ -77,29 +78,29 @@ export function ProductForm({
             ))}
           </Select>
         </Field>
-        <Field label="Price" hint="0 for free products">
+        <Field label={t('vendor.formPrice')} hint={t('vendor.formPriceHint')}>
           <Input type="number" min={0} step="0.01" value={form.price} onChange={set('price')} required />
         </Field>
       </div>
-      <Field label="Short description" hint="Shown in listings, 10 to 300 characters">
+      <Field label={t('vendor.formShort')} hint={t('vendor.formShortHint')}>
         <Input value={form.shortDescription} onChange={set('shortDescription')} required minLength={10} maxLength={300} />
       </Field>
-      <Field label="Full description">
+      <Field label={t('vendor.formDescription')}>
         <Textarea value={form.description} onChange={set('description')} required minLength={20} rows={10} />
       </Field>
       <div className="grid gap-4 sm:grid-cols-3">
-        <Field label="Demo URL (optional)">
+        <Field label={t('vendor.formDemo')}>
           <Input type="url" value={form.demoUrl} onChange={set('demoUrl')} placeholder="https://" />
         </Field>
-        <Field label="Version (optional)">
+        <Field label={t('vendor.formVersion')}>
           <Input value={form.version} onChange={set('version')} placeholder="1.0.0" />
         </Field>
-        <Field label="Tags" hint="Comma separated">
+        <Field label={t('vendor.formTags')} hint={t('vendor.formTagsHint')}>
           <Input value={form.tags} onChange={set('tags')} placeholder="react, template" />
         </Field>
       </div>
-      <Button type="submit" loading={busy}>
-        {submitLabel}
+      <Button type="submit" loading={busy} arrow>
+        {submitLabel ?? t('common.save')}
       </Button>
     </form>
   );

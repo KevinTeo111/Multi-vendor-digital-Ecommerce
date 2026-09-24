@@ -55,6 +55,11 @@ export class VendorSalesController {
   list(@CurrentUser('vendorId') vendorId: string, @Query() query: VendorSalesQuery) {
     return this.orders.listSalesForVendor(vendorId, query);
   }
+
+  @Get(':itemId')
+  get(@CurrentUser('vendorId') vendorId: string, @Param('itemId') itemId: string) {
+    return this.orders.getSaleForVendor(vendorId, itemId);
+  }
 }
 
 @Controller('admin/orders')

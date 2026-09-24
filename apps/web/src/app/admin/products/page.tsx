@@ -3,29 +3,33 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { Badge, Card, EmptyState, Input, Loading, PageHeader, Pagination, Select, Table, Td } from '@/components/ui';
+import { useLocale } from '@/i18n/client';
 import { formatDate, formatMoney } from '@/lib/format';
+import { useRealtimeEvent } from '@/lib/realtime';
 import type { Paginated, VendorProduct } from '@/lib/types';
 import { useFetch } from '@/lib/use-fetch';
 
 const STATUSES = ['PENDING_REVIEW', '', 'APPROVED', 'REJECTED', 'BLOCKED', 'DRAFT', 'UNPUBLISHED'];
 
 export default function AdminProductsPage() {
+  const { t, status: statusLabel } = useLocale();
   const [status, setStatus] = useState('PENDING_REVIEW');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const list = useFetch<Paginated<VendorProduct>>('/admin/products', { status: status || undefined, search: search || undefined, page, pageSize: 25 });
+  useRealtimeEvent('product.submitted', () => list.reload());
 
   return (
     <div>
-      <PageHeader title="Product review" description="Approve, reject or block listings. Vendors see the rejection reason." />
+      <PageHeader title={t('admin.reviewTitle')} description={t('admin.reviewDescription')} />
       <Card
         actions={
           <div className="flex gap-2">
-            <Input placeholder="Search title or store" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="w-48" />
-            <Select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="w-auto" aria-label="Status">
+            <Input placeholder={t('admin.searchTitleStore')} value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="w-48" />
+            <Select value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }} className="w-auto" aria-label={t('common.status')}>
               {STATUSES.map((s) => (
                 <option key={s} value={s}>
-                  {s ? s.replace('_', ' ') : 'All statuses'}
+                  {s ? statusLabel(s) : t('common.allStatuses')}
                 </option>
               ))}
             </Select>
@@ -35,10 +39,10 @@ export default function AdminProductsPage() {
         {list.loading && !list.data ? (
           <Loading />
         ) : !list.data || list.data.items.length === 0 ? (
-          <EmptyState title="No products in this view" />
+          <EmptyState title={t('admin.noProductsView')} />
         ) : (
           <>
-            <Table headers={['Product', 'Vendor', 'Price', 'Status', 'Submitted', '']}>
+            <Table headers={[t('vendor.product'), t('admin.vendor'), t('vendor.price'), t('common.status'), t('admin.submitted'), '']}>
               {list.data.items.map((p) => (
                 <tr key={p.id}>
                   <Td>
@@ -48,7 +52,7 @@ export default function AdminProductsPage() {
                         {p.thumbnailUrl && <img src={p.thumbnailUrl} alt="" className="h-full w-full object-cover" />}
                       </div>
                       <div>
-                        <div className="font-medium">{p.title}</div>
+                        <div className="font-medium text-navy-900">{p.title}</div>
                         <div className="text-xs text-slate-500">{p.category.name}</div>
                       </div>
                     </div>
@@ -60,8 +64,8 @@ export default function AdminProductsPage() {
                   </Td>
                   <Td className="text-xs">{formatDate(p.submittedAt)}</Td>
                   <Td>
-                    <Link href={`/admin/products/${p.id}`} className="text-indigo-600 hover:underline">
-                      Review
+                    <Link href={`/admin/products/${p.id}`} className="font-semibold text-brand-600 hover:underline">
+                      {t('admin.review')}
                     </Link>
                   </Td>
                 </tr>

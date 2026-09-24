@@ -6,10 +6,12 @@ import { Suspense, useState, type FormEvent } from 'react';
 import { AuthLayout } from '@/components/auth-layout';
 import { useAuth } from '@/components/auth-provider';
 import { Alert, Button, Field, Input } from '@/components/ui';
+import { useT } from '@/i18n/client';
 import { ApiError } from '@/lib/api';
 
 function RegisterForm() {
   const { register } = useAuth();
+  const t = useT();
   const router = useRouter();
   const params = useSearchParams();
   const [role, setRole] = useState<'BUYER' | 'VENDOR'>(params.get('role') === 'VENDOR' ? 'VENDOR' : 'BUYER');
@@ -26,7 +28,7 @@ function RegisterForm() {
       const plan = params.get('plan');
       router.push(role === 'VENDOR' ? `/vendor/subscription${plan ? `?plan=${plan}` : ''}` : '/');
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Registration failed');
+      setError(err instanceof ApiError ? err.message : t('auth.registerFailed'));
     } finally {
       setLoading(false);
     }
@@ -37,45 +39,40 @@ function RegisterForm() {
   return (
     <form onSubmit={submit} className="space-y-4">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900">{role === 'VENDOR' ? 'Create seller account' : 'Create your account'}</h2>
-        <p className="mt-1 text-sm text-slate-500">{role === 'VENDOR' ? 'Open your store in under a minute.' : 'Buy and download digital products instantly.'}</p>
+        <h2 className="text-2xl font-bold text-navy-900">{role === 'VENDOR' ? t('auth.registerTitleSeller') : t('auth.registerTitleBuyer')}</h2>
+        <p className="mt-1 text-sm text-slate-500">{role === 'VENDOR' ? t('auth.registerSubtitleSeller') : t('auth.registerSubtitleBuyer')}</p>
       </div>
       {error && <Alert tone="error">{error}</Alert>}
 
-      <div className="grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1 text-sm">
+      <div className="grid grid-cols-2 gap-1 rounded-full bg-slate-100 p-1 text-sm">
         {(['BUYER', 'VENDOR'] as const).map((r) => (
-          <button
-            key={r}
-            type="button"
-            onClick={() => setRole(r)}
-            className={`rounded-lg px-3 py-2 font-semibold transition ${role === r ? 'bg-white text-brand-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-          >
-            {r === 'BUYER' ? 'I want to buy' : 'I want to sell'}
+          <button key={r} type="button" onClick={() => setRole(r)} className={`rounded-full px-3 py-2 font-semibold transition ${role === r ? 'bg-brand-500 text-white shadow' : 'text-slate-500 hover:text-navy-900'}`}>
+            {r === 'BUYER' ? t('auth.wantBuy') : t('auth.wantSell')}
           </button>
         ))}
       </div>
 
-      <Field label="Full name">
-        <Input value={form.name} onChange={set('name')} required minLength={2} autoComplete="name" placeholder="Jane Doe" />
+      <Field label={t('auth.fullName')}>
+        <Input value={form.name} onChange={set('name')} required minLength={2} autoComplete="name" />
       </Field>
       {role === 'VENDOR' && (
-        <Field label="Store name" hint="Shown publicly on your storefront">
-          <Input value={form.storeName} onChange={set('storeName')} required minLength={2} placeholder="Creative Studio" />
+        <Field label={t('auth.storeName')} hint={t('auth.storeNameHint')}>
+          <Input value={form.storeName} onChange={set('storeName')} required minLength={2} />
         </Field>
       )}
-      <Field label="Email">
-        <Input type="email" value={form.email} onChange={set('email')} required autoComplete="email" placeholder="you@example.com" />
+      <Field label={t('auth.email')}>
+        <Input type="email" value={form.email} onChange={set('email')} required autoComplete="email" />
       </Field>
-      <Field label="Password" hint="At least 8 characters">
-        <Input type="password" value={form.password} onChange={set('password')} required minLength={8} autoComplete="new-password" placeholder="Create a strong password" />
+      <Field label={t('auth.password')} hint={t('auth.passwordHint')}>
+        <Input type="password" value={form.password} onChange={set('password')} required minLength={8} autoComplete="new-password" />
       </Field>
-      <Button type="submit" loading={loading} className="w-full" size="lg">
-        {role === 'VENDOR' ? 'Create seller account' : 'Create account'}
+      <Button type="submit" loading={loading} className="w-full" size="lg" arrow>
+        {role === 'VENDOR' ? t('auth.registerSubmitSeller') : t('auth.registerSubmitBuyer')}
       </Button>
       <p className="text-center text-sm text-slate-500">
-        Already registered?{' '}
+        {t('auth.alreadyRegistered')}{' '}
         <Link href="/login" className="font-semibold text-brand-600 hover:underline">
-          Sign in
+          {t('common.signIn')}
         </Link>
       </p>
     </form>
@@ -83,12 +80,9 @@ function RegisterForm() {
 }
 
 export default function RegisterPage() {
+  const t = useT();
   return (
-    <AuthLayout
-      title="Join our growing community of creators."
-      subtitle="Sell your digital products, reach buyers worldwide, and manage everything from one dashboard."
-      bullets={['Keep the majority of every sale', 'Automatic delivery after payment', 'Easy-to-use seller dashboard']}
-    >
+    <AuthLayout title={t('auth.registerSideTitle')} subtitle={t('auth.registerSideText')} bullets={[t('auth.registerBullet1'), t('auth.registerBullet2'), t('auth.registerBullet3')]}>
       <Suspense>
         <RegisterForm />
       </Suspense>

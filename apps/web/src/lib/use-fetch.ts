@@ -29,7 +29,7 @@ export function useFetch<T>(path: string | null, query?: Query) {
     void reload();
   }, [reload]);
 
-  return { data, error, loading, reload, setData };
+  return { data, error, loading, reload, setData: setData as React.Dispatch<React.SetStateAction<T | null>> };
 }
 
 /** Wraps a mutation with busy/error state. */

@@ -1,10 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import { useT } from '@/i18n/client';
 import { api, ApiError } from '@/lib/api';
+import { DownloadIcon } from './icons';
 import { Button } from './ui';
 
-export function DownloadButton({ orderItemId, fileId, label = 'Download' }: { orderItemId: string; fileId?: string; label?: string }) {
+export function DownloadButton({ orderItemId, fileId, label }: { orderItemId: string; fileId?: string; label?: string }) {
+  const t = useT();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -16,7 +19,7 @@ export function DownloadButton({ orderItemId, fileId, label = 'Download' }: { or
       const res = await api<{ url: string }>(path);
       window.location.assign(res.url);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Download failed');
+      setError(err instanceof ApiError ? err.message : t('library.downloadFailed'));
     } finally {
       setLoading(false);
     }
@@ -25,7 +28,7 @@ export function DownloadButton({ orderItemId, fileId, label = 'Download' }: { or
   return (
     <div className="text-right">
       <Button size="sm" variant="secondary" onClick={download} loading={loading}>
-        {label}
+        <DownloadIcon size={14} /> {label ?? t('common.download')}
       </Button>
       {error && <div className="mt-1 text-xs text-rose-600">{error}</div>}
     </div>

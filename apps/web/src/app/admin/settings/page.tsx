@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from 'react';
 import { Alert, Button, Card, Field, Input, Loading, PageHeader, Select } from '@/components/ui';
+import { useT } from '@/i18n/client';
 import { api } from '@/lib/api';
 import { useAction, useFetch } from '@/lib/use-fetch';
 
@@ -15,61 +16,58 @@ type FieldDef = {
   options?: Array<{ value: string; label: string }>;
 };
 
-const GROUPS: Array<{ title: string; fields: FieldDef[] }> = [
-  {
-    title: 'Site',
-    fields: [
-      { key: 'site.name', label: 'Site name', kind: 'text' },
-      { key: 'site.currency', label: 'Currency (ISO code)', kind: 'text', hint: 'Used for new orders and plans' },
-    ],
-  },
-  {
-    title: 'Finance',
-    fields: [
-      { key: 'finance.min_withdrawal_cents', label: 'Minimum withdrawal', kind: 'money', hint: 'Vendors can request a payout only above this amount' },
-      { key: 'finance.pending_hold_days', label: 'Earnings hold (days)', kind: 'int', hint: 'Days before a sale becomes available for withdrawal' },
-      { key: 'finance.default_commission_bps', label: 'Default commission (%)', kind: 'percent', hint: 'Applied when a vendor has no plan' },
-      {
-        key: 'finance.payout_mode',
-        label: 'Payout mode',
-        kind: 'select',
-        hint: 'Manual: you send PIX/bank transfers and mark withdrawals paid. Gateway: transfers go through the payment provider.',
-        options: [
-          { value: 'manual', label: 'Manual (PIX / bank transfer by admin)' },
-          { value: 'gateway', label: 'Gateway (automatic transfer)' },
-        ],
-      },
-    ],
-  },
-  {
-    title: 'Products',
-    fields: [
-      { key: 'products.max_upload_mb', label: 'Max upload size (MB)', kind: 'int' },
-      { key: 'products.allowed_file_extensions', label: 'Allowed file extensions', kind: 'list', hint: 'Comma separated, without dots' },
-    ],
-  },
-];
-
-const FIELDS = GROUPS.flatMap((g) => g.fields);
-
 export default function AdminSettingsPage() {
+  const t = useT();
   const settings = useFetch<Settings>('/admin/settings');
   const action = useAction();
   const [form, setForm] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState(false);
+
+  const GROUPS: Array<{ title: string; fields: FieldDef[] }> = [
+    {
+      title: t('admin.groupSite'),
+      fields: [
+        { key: 'site.name', label: t('admin.siteName'), kind: 'text' },
+        { key: 'site.currency', label: t('admin.currency'), kind: 'text', hint: t('admin.currencyHint') },
+      ],
+    },
+    {
+      title: t('admin.groupFinance'),
+      fields: [
+        { key: 'finance.min_withdrawal_cents', label: t('admin.minWithdrawal'), kind: 'money', hint: t('admin.minWithdrawalHint') },
+        { key: 'finance.pending_hold_days', label: t('admin.holdDays'), kind: 'int', hint: t('admin.holdDaysHint') },
+        { key: 'finance.default_commission_bps', label: t('admin.defaultCommission'), kind: 'percent', hint: t('admin.defaultCommissionHint') },
+        {
+          key: 'finance.payout_mode',
+          label: t('admin.payoutMode'),
+          kind: 'select',
+          hint: t('admin.payoutModeHint'),
+          options: [
+            { value: 'manual', label: t('admin.payoutManual') },
+            { value: 'gateway', label: t('admin.payoutGateway') },
+          ],
+        },
+      ],
+    },
+    {
+      title: t('admin.groupProducts'),
+      fields: [
+        { key: 'products.max_upload_mb', label: t('admin.maxUpload'), kind: 'int' },
+        { key: 'products.allowed_file_extensions', label: t('admin.allowedExtensions'), kind: 'list', hint: t('admin.allowedExtensionsHint') },
+      ],
+    },
+  ];
+  const FIELDS = GROUPS.flatMap((g) => g.fields);
 
   useEffect(() => {
     if (!settings.data) return;
     const next: Record<string, string> = {};
     for (const f of FIELDS) {
       const v = settings.data[f.key];
-      next[f.key] =
-        f.kind === 'money' ? ((v as number) / 100).toFixed(2)
-        : f.kind === 'percent' ? ((v as number) / 100).toString()
-        : f.kind === 'list' ? (v as string[]).join(', ')
-        : String(v ?? '');
+      next[f.key] = f.kind === 'money' ? ((v as number) / 100).toFixed(2) : f.kind === 'percent' ? ((v as number) / 100).toString() : f.kind === 'list' ? (v as string[]).join(', ') : String(v ?? '');
     }
     setForm(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings.data]);
 
   const save = async (e: FormEvent) => {
@@ -96,10 +94,10 @@ export default function AdminSettingsPage() {
 
   return (
     <div>
-      <PageHeader title="Site settings" />
+      <PageHeader title={t('admin.settingsTitle')} />
       <form onSubmit={save} className="space-y-6">
         {action.error && <Alert tone="error">{action.error}</Alert>}
-        {saved && <Alert tone="success">Settings saved.</Alert>}
+        {saved && <Alert tone="success">{t('admin.settingsSaved')}</Alert>}
         {GROUPS.map((group) => (
           <Card key={group.title} title={group.title}>
             <div className="grid gap-4 md:grid-cols-2">
@@ -128,8 +126,8 @@ export default function AdminSettingsPage() {
             </div>
           </Card>
         ))}
-        <Button type="submit" loading={action.busy}>
-          Save settings
+        <Button type="submit" loading={action.busy} arrow>
+          {t('admin.saveSettings')}
         </Button>
       </form>
     </div>

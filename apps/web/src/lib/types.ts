@@ -204,6 +204,21 @@ export interface Order {
   buyer?: { id: string; name: string; email: string };
 }
 
+export interface VendorSale {
+  id: string;
+  productTitle: string;
+  priceCents: number;
+  commissionRateBps: number;
+  commissionCents: number;
+  vendorNetCents: number;
+  createdAt: string;
+  downloads: number;
+  order: { id: string; orderNumber: string; paidAt: string | null; paymentMethod: string | null; currency: string; buyer: { name: string } };
+  product: { id: string; slug: string; title: string; thumbnailUrl: string | null; version: string | null };
+  plan: { id: string; name: string } | null;
+  ledgerEntries: Array<{ id: string; type: string; status: 'PENDING' | 'AVAILABLE'; amountCents: number; availableAt: string | null }>;
+}
+
 export interface Balance {
   pendingCents: number;
   availableCents: number;

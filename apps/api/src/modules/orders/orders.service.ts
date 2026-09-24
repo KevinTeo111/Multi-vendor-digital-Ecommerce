@@ -23,6 +23,7 @@ import { paginate } from '../../common/dto/pagination.dto';
 import { AuditService } from '../audit/audit.service';
 import { CartService } from '../cart/cart.service';
 import { PAYMENT_GATEWAY, PaymentGateway } from '../payments/gateway/payment-gateway.interface';
+import { RealtimeService } from '../realtime/realtime.service';
 import { SettingsService } from '../settings/settings.service';
 import { StorageService } from '../storage/storage.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
@@ -44,6 +45,7 @@ export class OrdersService {
     private readonly subscriptions: SubscriptionsService,
     private readonly storage: StorageService,
     private readonly audit: AuditService,
+    private readonly realtime: RealtimeService,
     @Inject(PAYMENT_GATEWAY) private readonly gateway: PaymentGateway,
   ) {}
 
@@ -162,10 +164,10 @@ export class OrdersService {
     const holdDays = await this.settings.get(SETTING_KEYS.PENDING_HOLD_DAYS);
     const availableAt = new Date(Date.now() + holdDays * 24 * 60 * 60 * 1000);
 
-    await this.prisma.$transaction(async (tx) => {
+    const paid = await this.prisma.$transaction(async (tx) => {
       const order = await tx.order.findUnique({ where: { id: orderId }, include: { items: true } });
       if (!order) throw new NotFoundException('Order not found');
-      if (order.status === OrderStatus.PAID) return; // duplicate webhook
+      if (order.status === OrderStatus.PAID) return null; // duplicate webhook
       if (order.status !== OrderStatus.PENDING) {
         this.logger.warn(`Order ${order.orderNumber} received payment while ${order.status}`);
       }
@@ -208,7 +210,20 @@ export class OrdersService {
         { actorId: order.buyerId, action: 'order.paid', entityType: 'Order', entityId: orderId, metadata: { totalCents: order.totalCents } },
         tx,
       );
+      return order;
     });
+
+    if (paid) {
+      this.realtime.toUser(paid.buyerId, 'order.paid', { orderId: paid.id, orderNumber: paid.orderNumber });
+      for (const item of paid.items) {
+        this.realtime.toVendor(item.vendorId, 'sale.new', {
+          orderItemId: item.id,
+          orderNumber: paid.orderNumber,
+          productTitle: item.productTitle,
+          vendorNetCents: item.vendorNetCents,
+        });
+      }
+    }
   }
 
   async markFailed(orderId: string, reason: string) {
@@ -329,6 +344,27 @@ export class OrdersService {
         commissionCents: totals._sum.commissionCents ?? 0,
         netCents: totals._sum.vendorNetCents ?? 0,
       },
+    };
+  }
+
+  /** One sale as the vendor sees it: item, order, buyer name, payout status, downloads. */
+  async getSaleForVendor(vendorId: string, orderItemId: string) {
+    const item = await this.prisma.orderItem.findFirst({
+      where: { id: orderItemId, vendorId, order: { status: OrderStatus.PAID } },
+      include: {
+        order: { select: { id: true, orderNumber: true, paidAt: true, paymentMethod: true, currency: true, buyer: { select: { name: true } } } },
+        product: { select: { id: true, slug: true, title: true, thumbnailKey: true, version: true } },
+        plan: { select: { id: true, name: true } },
+        ledgerEntries: { select: { id: true, type: true, status: true, amountCents: true, availableAt: true } },
+        _count: { select: { downloads: true } },
+      },
+    });
+    if (!item) throw new NotFoundException('Sale not found');
+    const { product, _count, ...rest } = item;
+    return {
+      ...rest,
+      downloads: _count.downloads,
+      product: { ...product, thumbnailUrl: await this.storage.createMediaUrl(product.thumbnailKey) },
     };
   }
 

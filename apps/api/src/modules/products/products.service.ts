@@ -10,6 +10,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { slugify, slugWithSuffix } from '../../common/utils/slug';
 import { paginate } from '../../common/dto/pagination.dto';
 import { AuditService } from '../audit/audit.service';
+import { RealtimeService } from '../realtime/realtime.service';
 import { StorageService } from '../storage/storage.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import {
@@ -53,6 +54,7 @@ export class ProductsService {
     private readonly storage: StorageService,
     private readonly subscriptions: SubscriptionsService,
     private readonly audit: AuditService,
+    private readonly realtime: RealtimeService,
   ) {}
 
   // =========================================================================
@@ -189,6 +191,11 @@ export class ProductsService {
         tx,
       );
       return updated;
+    }).then((updated) => {
+      if (updated.status === ProductStatus.PENDING_REVIEW) {
+        this.realtime.toAdmins('product.submitted', { productId, title: updated.title, vendorId });
+      }
+      return updated;
     });
   }
 
@@ -306,6 +313,7 @@ export class ProductsService {
       },
     });
     await this.audit.log({ actorId: adminId, action: 'product.approve', entityType: 'Product', entityId: productId });
+    this.notifyStatus(updated);
     return updated;
   }
 
@@ -325,6 +333,7 @@ export class ProductsService {
       entityId: productId,
       metadata: { reason },
     });
+    this.notifyStatus(updated);
     return updated;
   }
 
@@ -342,6 +351,7 @@ export class ProductsService {
       entityId: productId,
       metadata: { reason: reason ?? null },
     });
+    this.notifyStatus(updated);
     return updated;
   }
 
@@ -353,7 +363,17 @@ export class ProductsService {
       data: { status: product.publishedAt ? ProductStatus.APPROVED : ProductStatus.DRAFT },
     });
     await this.audit.log({ actorId: adminId, action: 'product.unblock', entityType: 'Product', entityId: productId });
+    this.notifyStatus(updated);
     return updated;
+  }
+
+  private notifyStatus(product: { id: string; vendorId: string; title: string; status: ProductStatus; rejectionReason: string | null }) {
+    this.realtime.toVendor(product.vendorId, 'product.status', {
+      productId: product.id,
+      title: product.title,
+      status: product.status,
+      reason: product.rejectionReason,
+    });
   }
 
   // =========================================================================

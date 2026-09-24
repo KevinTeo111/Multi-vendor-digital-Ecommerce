@@ -17,6 +17,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { PaginationDto, paginate } from '../../common/dto/pagination.dto';
 import { AuditService } from '../audit/audit.service';
 import { PAYMENT_GATEWAY, PaymentGateway } from '../payments/gateway/payment-gateway.interface';
+import { RealtimeService } from '../realtime/realtime.service';
 import { SettingsService } from '../settings/settings.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { LedgerService } from './ledger.service';
@@ -35,8 +36,19 @@ export class WithdrawalsService {
     private readonly settings: SettingsService,
     private readonly subscriptions: SubscriptionsService,
     private readonly audit: AuditService,
+    private readonly realtime: RealtimeService,
     @Inject(PAYMENT_GATEWAY) private readonly gateway: PaymentGateway,
   ) {}
+
+  private notify(w: { id: string; vendorId: string; status: WithdrawalStatus; amountCents: number; rejectionReason?: string | null; adminNotes?: string | null }) {
+    this.realtime.toVendor(w.vendorId, 'withdrawal.status', {
+      withdrawalId: w.id,
+      status: w.status,
+      amountCents: w.amountCents,
+      reason: w.rejectionReason ?? null,
+      notes: w.adminNotes ?? null,
+    });
+  }
 
   /** What the vendor dashboard shows next to the "Request withdrawal" button. */
   async eligibility(vendorId: string, requestedCents?: number) {
@@ -91,6 +103,7 @@ export class WithdrawalsService {
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
     );
+    this.realtime.toAdmins('withdrawal.requested', { withdrawalId: withdrawal.id, vendorId, amountCents: withdrawal.amountCents });
     return withdrawal;
   }
 
@@ -160,6 +173,7 @@ export class WithdrawalsService {
         entityId: id,
         metadata: { amountCents: withdrawal.amountCents, payoutMode },
       });
+      this.notify(updated);
       return updated;
     }
 
@@ -208,6 +222,7 @@ export class WithdrawalsService {
       entityId: id,
       metadata: { amountCents: withdrawal.amountCents, transferStatus: transfer.status },
     });
+    this.notify(updated);
     return updated;
   }
 
@@ -241,6 +256,7 @@ export class WithdrawalsService {
       entityId: id,
       metadata: { amountCents: withdrawal.amountCents, reference: reference ?? null },
     });
+    this.notify(updated);
     return updated;
   }
 
@@ -260,6 +276,9 @@ export class WithdrawalsService {
         { actorId: adminId, action: 'withdrawal.reject', entityType: 'Withdrawal', entityId: id, metadata: { reason } },
         tx,
       );
+      return updated;
+    }).then((updated) => {
+      this.notify(updated);
       return updated;
     });
   }
@@ -289,6 +308,9 @@ export class WithdrawalsService {
         data: { status: WithdrawalStatus.FAILED, adminNotes: reason },
       });
       await this.releaseHold(tx, withdrawal.vendorId, id, withdrawal.amountCents, 'Withdrawal failed; funds returned');
+      return updated;
+    }).then((updated) => {
+      if (updated.status === WithdrawalStatus.FAILED) this.notify(updated);
       return updated;
     });
   }

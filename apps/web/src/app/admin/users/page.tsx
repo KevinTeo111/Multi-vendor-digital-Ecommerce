@@ -2,12 +2,14 @@
 
 import { useState } from 'react';
 import { Alert, Badge, Button, Card, EmptyState, Input, Loading, PageHeader, Pagination, Select, Table, Td } from '@/components/ui';
+import { useLocale } from '@/i18n/client';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/format';
 import type { AdminUser, Paginated } from '@/lib/types';
 import { useAction, useFetch } from '@/lib/use-fetch';
 
 export default function AdminUsersPage() {
+  const { t, status: statusLabel } = useLocale();
   const [role, setRole] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -16,14 +18,14 @@ export default function AdminUsersPage() {
 
   const toggle = async (u: AdminUser) => {
     const next = u.status === 'ACTIVE' ? 'BLOCKED' : 'ACTIVE';
-    if (next === 'BLOCKED' && !confirm(`Block ${u.email}? They will be signed out everywhere.`)) return;
+    if (next === 'BLOCKED' && !confirm(t('admin.blockConfirm', { email: u.email }))) return;
     const ok = await action.run(() => api(`/admin/users/${u.id}/status`, { method: 'PATCH', body: { status: next } }));
     if (ok !== undefined) list.reload();
   };
 
   return (
     <div>
-      <PageHeader title="Users" />
+      <PageHeader title={t('admin.usersTitle')} />
       {action.error && (
         <div className="mb-4">
           <Alert tone="error">{action.error}</Alert>
@@ -32,11 +34,11 @@ export default function AdminUsersPage() {
       <Card
         actions={
           <div className="flex gap-2">
-            <Input placeholder="Name or email" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="w-48" />
-            <Select value={role} onChange={(e) => { setRole(e.target.value); setPage(1); }} className="w-auto" aria-label="Role">
+            <Input placeholder={t('admin.searchUser')} value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} className="w-48" />
+            <Select value={role} onChange={(e) => { setRole(e.target.value); setPage(1); }} className="w-auto" aria-label={t('admin.role')}>
               {['', 'BUYER', 'VENDOR', 'ADMIN'].map((r) => (
                 <option key={r} value={r}>
-                  {r || 'All roles'}
+                  {r ? statusLabel(r) : t('admin.allRoles')}
                 </option>
               ))}
             </Select>
@@ -46,17 +48,17 @@ export default function AdminUsersPage() {
         {list.loading && !list.data ? (
           <Loading />
         ) : !list.data || list.data.items.length === 0 ? (
-          <EmptyState title="No users" />
+          <EmptyState title={t('admin.noUsers')} />
         ) : (
           <>
-            <Table headers={['User', 'Role', 'Store', 'Status', 'Joined', 'Actions']}>
+            <Table headers={[t('admin.user'), t('admin.role'), t('admin.store'), t('common.status'), t('admin.joined'), t('common.actions')]}>
               {list.data.items.map((u) => (
                 <tr key={u.id}>
                   <Td>
                     {u.name}
                     <div className="text-xs text-slate-500">{u.email}</div>
                   </Td>
-                  <Td>{u.role}</Td>
+                  <Td>{statusLabel(u.role)}</Td>
                   <Td>{u.vendor?.storeName ?? '—'}</Td>
                   <Td>
                     <Badge status={u.status} />
@@ -65,7 +67,7 @@ export default function AdminUsersPage() {
                   <Td>
                     {u.role !== 'ADMIN' && (
                       <Button size="sm" variant={u.status === 'ACTIVE' ? 'danger' : 'secondary'} onClick={() => toggle(u)} loading={action.busy}>
-                        {u.status === 'ACTIVE' ? 'Block' : 'Unblock'}
+                        {u.status === 'ACTIVE' ? t('admin.blockUser') : t('admin.unblockUser')}
                       </Button>
                     )}
                   </Td>

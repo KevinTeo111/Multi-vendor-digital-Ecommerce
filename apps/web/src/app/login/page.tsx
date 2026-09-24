@@ -6,10 +6,12 @@ import { Suspense, useState, type FormEvent } from 'react';
 import { AuthLayout } from '@/components/auth-layout';
 import { useAuth } from '@/components/auth-provider';
 import { Alert, Button, Field, Input } from '@/components/ui';
+import { useT } from '@/i18n/client';
 import { ApiError } from '@/lib/api';
 
 function LoginForm() {
   const { login } = useAuth();
+  const t = useT();
   const router = useRouter();
   const params = useSearchParams();
   const [email, setEmail] = useState('');
@@ -26,7 +28,7 @@ function LoginForm() {
       const next = params.get('next');
       router.push(next ?? (user.role === 'ADMIN' ? '/admin' : user.role === 'VENDOR' ? '/vendor' : '/'));
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : 'Login failed');
+      setError(err instanceof ApiError ? err.message : t('auth.loginFailed'));
     } finally {
       setLoading(false);
     }
@@ -35,23 +37,23 @@ function LoginForm() {
   return (
     <form onSubmit={submit} className="space-y-4">
       <div>
-        <h2 className="text-2xl font-bold text-slate-900">Welcome back</h2>
-        <p className="mt-1 text-sm text-slate-500">Sign in to your account to continue.</p>
+        <h2 className="text-2xl font-bold text-navy-900">{t('auth.loginTitle')}</h2>
+        <p className="mt-1 text-sm text-slate-500">{t('auth.loginSubtitle')}</p>
       </div>
       {error && <Alert tone="error">{error}</Alert>}
-      <Field label="Email">
-        <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" placeholder="you@example.com" />
+      <Field label={t('auth.email')}>
+        <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" placeholder="voce@exemplo.com" />
       </Field>
-      <Field label="Password">
+      <Field label={t('auth.password')}>
         <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" placeholder="••••••••" />
       </Field>
-      <Button type="submit" loading={loading} className="w-full" size="lg">
-        Sign in
+      <Button type="submit" loading={loading} className="w-full" size="lg" arrow>
+        {t('auth.loginSubmit')}
       </Button>
       <p className="text-center text-sm text-slate-500">
-        No account?{' '}
+        {t('auth.noAccount')}{' '}
         <Link href="/register" className="font-semibold text-brand-600 hover:underline">
-          Create one
+          {t('auth.createOne')}
         </Link>
       </p>
     </form>
@@ -59,12 +61,9 @@ function LoginForm() {
 }
 
 export default function LoginPage() {
+  const t = useT();
   return (
-    <AuthLayout
-      title="Your digital products, one place."
-      subtitle="Buy once and download forever, or open your own store and start earning from your work."
-      bullets={['Instant, protected downloads', 'Every listing reviewed by our team', 'Secure payments']}
-    >
+    <AuthLayout title={t('auth.loginSideTitle')} subtitle={t('auth.loginSideText')} bullets={[t('auth.loginBullet1'), t('auth.loginBullet2'), t('auth.loginBullet3')]}>
       <Suspense>
         <LoginForm />
       </Suspense>

@@ -2,15 +2,21 @@
 
 import Link from 'next/link';
 import { BoxIcon, ChartIcon, StoreIcon, WalletIcon } from '@/components/icons';
-import { Badge, Card, Loading, PageHeader, Stat } from '@/components/ui';
-import { formatMoney } from '@/lib/format';
+import { Badge, Card, ListRow, Loading, PageHeader, Stat } from '@/components/ui';
+import { useT } from '@/i18n/client';
+import { formatDate, formatMoney } from '@/lib/format';
+import { useRealtimeEvent } from '@/lib/realtime';
 import type { FinanceSummary, Paginated, VendorProduct, Withdrawal } from '@/lib/types';
 import { useFetch } from '@/lib/use-fetch';
 
 export default function AdminOverview() {
+  const t = useT();
   const summary = useFetch<FinanceSummary>('/admin/finance/summary');
   const pendingProducts = useFetch<Paginated<VendorProduct>>('/admin/products', { status: 'PENDING_REVIEW', pageSize: 6 });
   const pendingWithdrawals = useFetch<Paginated<Withdrawal>>('/admin/finance/withdrawals', { status: 'REQUESTED', pageSize: 6 });
+
+  useRealtimeEvent('product.submitted', () => pendingProducts.reload());
+  useRealtimeEvent('withdrawal.requested', () => pendingWithdrawals.reload());
 
   if (!summary.data) return <Loading />;
   const s = summary.data;
@@ -18,56 +24,32 @@ export default function AdminOverview() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Platform Overview" description="Sales, commissions and what needs your attention." />
+      <PageHeader title={t('admin.overviewTitle')} description={t('admin.overviewDescription')} />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Stat label="Total Revenue" value={formatMoney(s.grossSalesCents)} hint={`${s.paidItems} items sold`} icon={<ChartIcon size={18} />} />
-        <Stat label="Commission Earned" value={formatMoney(s.commissionCents)} hint="Platform share of paid sales" icon={<WalletIcon size={18} />} />
-        <Stat label="Owed to Sellers" value={formatMoney(s.vendorPendingCents + s.vendorAvailableCents)} hint={`${formatMoney(s.vendorAvailableCents)} available now`} icon={<StoreIcon size={18} />} />
-        <Stat label="Paid Out" value={formatMoney(paidOut?.amountCents ?? 0)} hint={`${paidOut?.count ?? 0} withdrawals`} icon={<BoxIcon size={18} />} />
+        <Stat label={t('admin.totalRevenue')} value={formatMoney(s.grossSalesCents)} hint={t('admin.itemsSold', { count: s.paidItems })} icon={<ChartIcon size={18} />} />
+        <Stat label={t('admin.commissionEarned')} value={formatMoney(s.commissionCents)} hint={t('admin.platformShare')} icon={<WalletIcon size={18} />} />
+        <Stat label={t('admin.owedToSellers')} value={formatMoney(s.vendorPendingCents + s.vendorAvailableCents)} hint={t('admin.availableNow', { amount: formatMoney(s.vendorAvailableCents) })} icon={<StoreIcon size={18} />} />
+        <Stat label={t('admin.paidOut')} value={formatMoney(paidOut?.amountCents ?? 0)} hint={t('admin.withdrawalsCount', { count: paidOut?.count ?? 0 })} icon={<BoxIcon size={18} />} />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <Card
-          title="Products Awaiting Review"
-          subtitle={`${pendingProducts.data?.total ?? 0} in queue`}
-          actions={<Link href="/admin/products" className="text-sm font-medium text-brand-600 hover:underline">Open queue</Link>}
-        >
-          <ul className="divide-y divide-slate-100 text-sm">
+        <Card title={t('admin.awaitingReview')} subtitle={t('admin.inQueue', { count: pendingProducts.data?.total ?? 0 })} actions={<Link href="/admin/products" className="text-sm font-semibold text-brand-600 hover:underline">{t('admin.openQueue')}</Link>} padded={false}>
+          <div className="px-5 pb-2">
             {pendingProducts.data?.items.map((p) => (
-              <li key={p.id} className="flex items-center gap-3 py-2.5">
-                <div className="h-10 w-14 shrink-0 overflow-hidden rounded-lg bg-slate-100">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  {p.thumbnailUrl && <img src={p.thumbnailUrl} alt="" className="h-full w-full object-cover" />}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <Link href={`/admin/products/${p.id}`} className="block truncate font-medium text-slate-900 hover:text-brand-600">
-                    {p.title}
-                  </Link>
-                  <span className="text-xs text-slate-500">{p.vendor?.storeName}</span>
-                </div>
-                <Badge status={p.status} />
-              </li>
+              <ListRow key={p.id} href={`/admin/products/${p.id}`} meta={formatDate(p.submittedAt)} tag={p.vendor?.storeName} title={p.title} trailing={<Badge status={p.status} />} />
             ))}
-            {pendingProducts.data?.items.length === 0 && <li className="py-3 text-slate-500">Queue is empty.</li>}
-          </ul>
+            {pendingProducts.data?.items.length === 0 && <p className="py-4 text-sm text-slate-500">{t('admin.queueEmpty')}</p>}
+          </div>
         </Card>
 
-        <Card
-          title="Withdrawal Requests"
-          subtitle={`${pendingWithdrawals.data?.total ?? 0} waiting`}
-          actions={<Link href="/admin/withdrawals" className="text-sm font-medium text-brand-600 hover:underline">Process</Link>}
-        >
-          <ul className="divide-y divide-slate-100 text-sm">
+        <Card title={t('admin.withdrawalRequests')} subtitle={t('admin.waiting', { count: pendingWithdrawals.data?.total ?? 0 })} actions={<Link href="/admin/withdrawals" className="text-sm font-semibold text-brand-600 hover:underline">{t('admin.process')}</Link>} padded={false}>
+          <div className="px-5 pb-2">
             {pendingWithdrawals.data?.items.map((w) => (
-              <li key={w.id} className="flex items-center gap-3 py-2.5">
-                <span className="bg-brand-gradient flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white">{w.vendor?.storeName?.[0]}</span>
-                <span className="min-w-0 flex-1 truncate font-medium text-slate-900">{w.vendor?.storeName}</span>
-                <span className="font-semibold">{formatMoney(w.amountCents)}</span>
-              </li>
+              <ListRow key={w.id} href="/admin/withdrawals" meta={formatDate(w.requestedAt)} title={w.vendor?.storeName ?? ''} trailing={<span className="font-semibold text-navy-900">{formatMoney(w.amountCents)}</span>} />
             ))}
-            {pendingWithdrawals.data?.items.length === 0 && <li className="py-3 text-slate-500">Nothing pending.</li>}
-          </ul>
+            {pendingWithdrawals.data?.items.length === 0 && <p className="py-4 text-sm text-slate-500">{t('admin.nothingPending')}</p>}
+          </div>
         </Card>
       </div>
     </div>

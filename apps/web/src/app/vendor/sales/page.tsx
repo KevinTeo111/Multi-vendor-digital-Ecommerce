@@ -1,50 +1,62 @@
 'use client';
 
 import { useState } from 'react';
-import { Card, EmptyState, Loading, PageHeader, Pagination, Stat, Table, Td } from '@/components/ui';
-import { formatBps, formatDate, formatMoney } from '@/lib/format';
+import { Card, EmptyState, ListRow, Loading, PageHeader, Pagination, Stat } from '@/components/ui';
+import { useT } from '@/i18n/client';
+import { formatDate, formatMoney } from '@/lib/format';
+import { useRealtimeEvent } from '@/lib/realtime';
 import type { OrderItem, Paginated } from '@/lib/types';
 import { useFetch } from '@/lib/use-fetch';
 
 type Sales = Paginated<OrderItem> & { totals: { grossCents: number; commissionCents: number; netCents: number } };
 
 export default function VendorSalesPage() {
+  const t = useT();
   const [page, setPage] = useState(1);
   const sales = useFetch<Sales>('/vendor/sales', { page, pageSize: 25 });
+  useRealtimeEvent('sale.new', () => sales.reload());
 
   if (!sales.data) return <Loading />;
   const { totals } = sales.data;
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Sales" />
+      <PageHeader title={t('vendor.salesTitle')} />
       <div className="grid gap-4 sm:grid-cols-3">
-        <Stat label="Gross" value={formatMoney(totals.grossCents)} />
-        <Stat label="Platform commission" value={formatMoney(totals.commissionCents)} />
-        <Stat label="Your net" value={formatMoney(totals.netCents)} />
+        <Stat label={t('vendor.gross')} value={formatMoney(totals.grossCents)} />
+        <Stat label={t('vendor.platformCommission')} value={formatMoney(totals.commissionCents)} />
+        <Stat label={t('vendor.yourNet')} value={formatMoney(totals.netCents)} />
       </div>
-      <Card>
+      <Card padded={false}>
         {sales.data.items.length === 0 ? (
-          <EmptyState title="No sales yet" />
+          <div className="p-5">
+            <EmptyState title={t('vendor.noSalesYet')} />
+          </div>
         ) : (
-          <>
-            <Table headers={['Date', 'Order', 'Product', 'Buyer', 'Price', 'Commission', 'Net']}>
-              {sales.data.items.map((s) => (
-                <tr key={s.id}>
-                  <Td className="text-xs">{formatDate(s.order?.paidAt, true)}</Td>
-                  <Td className="font-mono text-xs">{s.order?.orderNumber}</Td>
-                  <Td>{s.productTitle}</Td>
-                  <Td>{s.order?.buyer?.name}</Td>
-                  <Td>{formatMoney(s.priceCents)}</Td>
-                  <Td className="text-slate-500">
-                    {formatMoney(s.commissionCents)} ({formatBps(s.commissionRateBps)})
-                  </Td>
-                  <Td className="font-medium">{formatMoney(s.vendorNetCents)}</Td>
-                </tr>
-              ))}
-            </Table>
+          <div className="px-5 pb-4">
+            {sales.data.items.map((s) => (
+              <ListRow
+                key={s.id}
+                href={`/vendor/sales/${s.id}`}
+                meta={formatDate(s.order?.paidAt, true)}
+                tag={<span className="font-mono">{s.order?.orderNumber}</span>}
+                title={
+                  <>
+                    {s.productTitle} <span className="text-xs font-normal text-slate-500">· {s.order?.buyer?.name}</span>
+                  </>
+                }
+                trailing={
+                  <span className="text-right">
+                    <span className="block font-semibold text-navy-900">{formatMoney(s.vendorNetCents)}</span>
+                    <span className="block text-xs text-slate-500">
+                      {t('vendor.gross')} {formatMoney(s.priceCents)}
+                    </span>
+                  </span>
+                }
+              />
+            ))}
             <Pagination page={sales.data.page} totalPages={sales.data.totalPages} onChange={setPage} />
-          </>
+          </div>
         )}
       </Card>
     </div>

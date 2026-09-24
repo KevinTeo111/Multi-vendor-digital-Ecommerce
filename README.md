@@ -91,6 +91,18 @@ the command resets the demo accounts.
   the object (size, type) before recording it.
 - **Webhooks** are stored by `(provider, eventId)` and processed exactly once.
 
+## Realtime and languages
+
+- **Realtime**: the API exposes a Socket.IO namespace at `/realtime`, authenticated with the same access
+  token as the REST API. Sellers receive `product.status`, `withdrawal.status` and `sale.new`; buyers
+  receive `order.paid`; admins receive `product.submitted` and `withdrawal.requested`. The web app shows
+  toasts and refreshes the affected lists in place, so an approval appears on the seller's screen without
+  a reload. CORS for the socket uses `WEB_URL`, like the REST API.
+- **Languages**: Portuguese (Brazil) is the default, English is available from the header toggle. The
+  choice is stored in a `locale` cookie so server-rendered pages translate too. Dictionaries live in
+  `apps/web/src/i18n/dictionaries`; every key in `en.ts` must exist in `pt-BR.ts` (enforced by the type).
+  API validation messages are not translated yet.
+
 ## API surface (all under `/api`)
 
 | Area | Routes |
@@ -98,7 +110,8 @@ the command resets the demo accounts.
 | Auth | `POST /auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout`, `GET /auth/me` |
 | Public catalog | `GET /products`, `/products/:slug`, `/categories`, `/plans`, `/vendors/:slug`, `/settings/public` |
 | Buyer | `GET/POST/DELETE /cart…`, `POST /checkout`, `GET /orders`, `/orders/:id`, `/orders/library`, `/orders/items/:id/download` |
-| Vendor | `/vendors/me`, `/vendor/products…` (CRUD, files, images, submit, unpublish), `/vendor/subscription`, `/vendor/sales`, `/vendor/finance/{balance,ledger,withdrawals,withdrawals/eligibility}` |
+| Vendor | `/vendors/me`, `/vendor/products…` (CRUD, files, images, submit, unpublish), `/vendor/subscription`, `/vendor/sales`, `/vendor/sales/:itemId`, `/vendor/finance/{balance,ledger,withdrawals,withdrawals/eligibility}` |
+| Realtime | Socket.IO namespace `/realtime` (token in handshake `auth.token`) |
 | Admin | `/admin/{users,vendors,products,orders,plans,categories,subscriptions,settings}`, `/admin/finance/{summary,withdrawals,vendors/:id/ledger}` |
 | Webhooks | `POST /webhooks/payments` |
 
