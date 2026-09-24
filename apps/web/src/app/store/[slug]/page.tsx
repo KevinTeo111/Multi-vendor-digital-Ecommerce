@@ -1,3 +1,6 @@
+// Allow a sleeping free-tier API up to a minute to wake up before this page gives up.
+export const maxDuration = 60;
+
 import { notFound } from 'next/navigation';
 import { BadgeCheckIcon } from '@/components/icons';
 import { PageContainer } from '@/components/page-container';

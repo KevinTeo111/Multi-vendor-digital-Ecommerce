@@ -1,3 +1,6 @@
+// Allow a sleeping free-tier API up to a minute to wake up before this page gives up.
+export const maxDuration = 60;
+
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AddToCart } from '@/components/add-to-cart';

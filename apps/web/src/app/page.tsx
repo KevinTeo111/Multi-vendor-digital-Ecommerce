@@ -1,3 +1,6 @@
+// Allow a sleeping free-tier API up to a minute to wake up before this page gives up.
+export const maxDuration = 60;
+
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { ArrowRightIcon, BadgeCheckIcon, CrownIcon, DownloadIcon, FlameIcon, GridIcon, SearchIcon, ShieldIcon, categoryIcon } from '@/components/icons';

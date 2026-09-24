@@ -1,4 +1,10 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
+/** Accepts "https://host", "https://host/", or "https://host/api" and always yields "https://host". */
+function normalizeBase(url: string | undefined, fallback: string) {
+  const value = (url ?? '').trim() || fallback;
+  return value.replace(/\/+$/, '').replace(/\/api$/, '');
+}
+
+const API_URL = normalizeBase(process.env.NEXT_PUBLIC_API_URL, 'http://localhost:4000');
 
 export class ApiError extends Error {
   constructor(
@@ -145,12 +151,19 @@ function extractMessage(data: unknown): string | null {
 // ---------------------------------------------------------------------------
 
 export async function serverApi<T>(path: string, query?: RequestOptions['query']): Promise<T | null> {
-  const base = process.env.API_URL ?? API_URL;
+  const base = normalizeBase(process.env.API_URL, API_URL);
+  const url = `${base}/api${path}${buildQuery(query)}`;
   try {
-    const res = await fetch(`${base}/api${path}${buildQuery(query)}`, { cache: 'no-store' });
-    if (!res.ok) return null;
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) {
+      console.error(`[serverApi] ${res.status} from ${url}: ${(await res.text()).slice(0, 200)}`);
+      return null;
+    }
     return (await res.json()) as T;
-  } catch {
+  } catch (err) {
+    // Next.js uses this error to mark the route as dynamic at build time; it must propagate.
+    if (err instanceof Error && err.message.includes('Dynamic server usage')) throw err;
+    console.error(`[serverApi] request failed for ${url}: ${(err as Error).message}`);
     return null;
   }
 }
