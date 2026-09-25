@@ -1,9 +1,15 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WithdrawalsService } from '../finance/withdrawals.service';
 import { OrdersService } from '../orders/orders.service';
-import { NormalizedWebhookEvent, PAYMENT_GATEWAY, PaymentGateway, WebhookHeaders } from '../payments/gateway/payment-gateway.interface';
+import {
+  NormalizedWebhookEvent,
+  PAYMENT_GATEWAY,
+  PaymentGateway,
+  WebhookHeaders,
+  WebhookRejectedError,
+} from '../payments/gateway/payment-gateway.interface';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 
 @Injectable()
@@ -18,23 +24,30 @@ export class WebhooksService {
     @Inject(PAYMENT_GATEWAY) private readonly gateway: PaymentGateway,
   ) {}
 
-  verify(rawBody: Buffer, headers: WebhookHeaders) {
-    return this.gateway.verifyWebhook(rawBody, headers);
-  }
+  async handle(rawBody: Buffer, headers: WebhookHeaders) {
+    let event: NormalizedWebhookEvent;
+    try {
+      event = await this.gateway.parseWebhook(rawBody, headers);
+    } catch (err) {
+      if (err instanceof WebhookRejectedError) {
+        this.logger.warn(`Webhook rejected: ${err.message}`);
+        throw new UnauthorizedException('Webhook authentication failed');
+      }
+      throw err;
+    }
 
-  async handle(payload: unknown) {
-    const event = this.gateway.parseWebhook(payload);
+    let payload: Prisma.InputJsonValue;
+    try {
+      payload = JSON.parse(rawBody.toString('utf8'));
+    } catch {
+      payload = { raw: rawBody.toString('utf8').slice(0, 10_000) };
+    }
 
     // Exactly-once: the unique (provider, eventId) index rejects replays.
     let record;
     try {
       record = await this.prisma.webhookEvent.create({
-        data: {
-          provider: this.gateway.name,
-          eventId: event.eventId,
-          type: event.kind,
-          payload: payload as Prisma.InputJsonValue,
-        },
+        data: { provider: this.gateway.name, eventId: event.eventId, type: event.kind, payload },
       });
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
@@ -46,13 +59,12 @@ export class WebhooksService {
     try {
       await this.dispatch(event);
       await this.prisma.webhookEvent.update({ where: { id: record.id }, data: { processedAt: new Date() } });
-      return { received: true };
+      return { received: true, kind: event.kind };
     } catch (err) {
       const message = (err as Error).message;
       this.logger.error(`Webhook ${event.kind} (${event.eventId}) failed: ${message}`);
       await this.prisma.webhookEvent.update({ where: { id: record.id }, data: { error: message } });
-      // Returning 200 with an error flag avoids endless provider retries for logic errors;
-      // failed events remain queryable for manual replay.
+      // 200 with an error flag avoids endless provider retries for logic errors; failed events stay queryable.
       return { received: true, error: message };
     }
   }
@@ -60,13 +72,11 @@ export class WebhooksService {
   private async dispatch(event: NormalizedWebhookEvent) {
     switch (event.kind) {
       case 'order.paid':
-        return this.orders.markPaidByGatewayId(event.gatewayOrderId, {
-          chargeId: event.chargeId,
-          paymentMethod: event.paymentMethod,
-        });
+        return this.orders.markPaidByGatewayId(event.gatewayOrderId, { chargeId: event.chargeId, paymentMethod: event.paymentMethod });
       case 'order.failed':
         return this.orders.markFailedByGatewayId(event.gatewayOrderId, event.reason);
       case 'subscription.activated':
+        return this.subscriptions.markActive(event.gatewaySubscriptionId, event.periodStart, event.periodEnd, event.newGatewaySubscriptionId);
       case 'subscription.renewed':
         return this.subscriptions.markActive(event.gatewaySubscriptionId, event.periodStart, event.periodEnd);
       case 'subscription.past_due':

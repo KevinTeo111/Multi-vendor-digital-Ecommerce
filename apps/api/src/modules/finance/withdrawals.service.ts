@@ -161,6 +161,9 @@ export class WithdrawalsService {
     }
 
     const payoutMode = await this.settings.get(SETTING_KEYS.PAYOUT_MODE);
+    if (payoutMode === 'gateway' && !this.gateway.supportsPayouts) {
+      throw new BadRequestException('Automated payouts are not available with the current payment provider. Switch the payout mode to manual in Settings.');
+    }
     if (payoutMode === 'manual') {
       const updated = await this.prisma.withdrawal.update({
         where: { id },

@@ -51,10 +51,8 @@ services:
       - key: DOWNLOAD_URL_TTL_SECONDS
         value: 300
       - key: PAYMENT_GATEWAY
-        value: mock # switch to pagarme once the account is approved
-      - key: PAGARME_SECRET_KEY
+        value: mock # "stripe" once STRIPE_* are set
+      - key: STRIPE_SECRET_KEY
         sync: false
-      - key: PAGARME_PUBLIC_KEY
-        sync: false
-      - key: PAGARME_WEBHOOK_SECRET
+      - key: STRIPE_WEBHOOK_SECRET
         sync: false

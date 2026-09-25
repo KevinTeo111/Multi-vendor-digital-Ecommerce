@@ -7,19 +7,20 @@ import {
   CreateSubscriptionInput,
   NormalizedWebhookEvent,
   PaymentGateway,
+  PlanLike,
   SubscriptionResult,
   TransferInput,
   TransferResult,
 } from './payment-gateway.interface';
 
 /**
- * Development gateway: every operation succeeds immediately.
- * Webhooks can be simulated by POSTing a payload of the shape
- * { id, type: 'order.paid' | ..., data: { ... } } to the webhook endpoint.
+ * Development gateway: every operation succeeds immediately, nothing leaves the process.
+ * Webhooks can be simulated by POSTing { id, type: 'order.paid' | ..., data: { ... } }.
  */
 @Injectable()
 export class MockPaymentGateway implements PaymentGateway {
   readonly name = 'mock' as const;
+  readonly supportsPayouts = true;
   private readonly logger = new Logger(MockPaymentGateway.name);
 
   async createCheckout(input: CreateCheckoutInput): Promise<CheckoutResult> {
@@ -27,17 +28,16 @@ export class MockPaymentGateway implements PaymentGateway {
     return { gatewayOrderId: `mock_or_${randomUUID()}`, status: 'paid' };
   }
 
+  async syncPlan(plan: PlanLike) {
+    return { gatewayPlanId: plan.gatewayPlanId ?? `mock_price_${plan.id}` };
+  }
+
   async createSubscription(input: CreateSubscriptionInput): Promise<SubscriptionResult> {
     const start = new Date();
     const end = new Date(start);
-    if (input.interval === 'YEAR') end.setFullYear(end.getFullYear() + 1);
+    if (input.plan.interval === 'YEAR') end.setFullYear(end.getFullYear() + 1);
     else end.setMonth(end.getMonth() + 1);
-    return {
-      gatewaySubscriptionId: `mock_sub_${randomUUID()}`,
-      status: 'active',
-      currentPeriodStart: start,
-      currentPeriodEnd: end,
-    };
+    return { gatewaySubscriptionId: `mock_sub_${randomUUID()}`, status: 'active', currentPeriodStart: start, currentPeriodEnd: end };
   }
 
   async cancelSubscription(gatewaySubscriptionId: string): Promise<void> {
@@ -53,33 +53,35 @@ export class MockPaymentGateway implements PaymentGateway {
     return { gatewayTransferId: `mock_tr_${randomUUID()}`, status: 'paid' };
   }
 
-  verifyWebhook(): boolean {
-    return true;
-  }
-
-  parseWebhook(payload: unknown): NormalizedWebhookEvent {
-    const p = (payload ?? {}) as { id?: string; type?: string; data?: Record<string, unknown> };
-    const eventId = p.id ?? randomUUID();
-    const data = p.data ?? {};
+  async parseWebhook(rawBody: Buffer): Promise<NormalizedWebhookEvent> {
+    let payload: { id?: string; type?: string; data?: Record<string, unknown> } = {};
+    try {
+      payload = JSON.parse(rawBody.toString('utf8') || '{}');
+    } catch {
+      payload = {};
+    }
+    const eventId = payload.id ?? randomUUID();
+    const data = payload.data ?? {};
     const str = (k: string) => (typeof data[k] === 'string' ? (data[k] as string) : undefined);
 
-    switch (p.type) {
+    switch (payload.type) {
       case 'order.paid':
         return { kind: 'order.paid', eventId, gatewayOrderId: str('gatewayOrderId') ?? '', chargeId: str('chargeId') };
       case 'order.failed':
         return { kind: 'order.failed', eventId, gatewayOrderId: str('gatewayOrderId') ?? '', reason: str('reason') };
       case 'subscription.activated':
+        return { kind: 'subscription.activated', eventId, gatewaySubscriptionId: str('gatewaySubscriptionId') ?? '' };
       case 'subscription.renewed':
-        return { kind: p.type, eventId, gatewaySubscriptionId: str('gatewaySubscriptionId') ?? '' };
+        return { kind: 'subscription.renewed', eventId, gatewaySubscriptionId: str('gatewaySubscriptionId') ?? '' };
       case 'subscription.past_due':
       case 'subscription.canceled':
-        return { kind: p.type, eventId, gatewaySubscriptionId: str('gatewaySubscriptionId') ?? '' };
+        return { kind: payload.type, eventId, gatewaySubscriptionId: str('gatewaySubscriptionId') ?? '' };
       case 'transfer.paid':
         return { kind: 'transfer.paid', eventId, gatewayTransferId: str('gatewayTransferId') ?? '' };
       case 'transfer.failed':
         return { kind: 'transfer.failed', eventId, gatewayTransferId: str('gatewayTransferId') ?? '', reason: str('reason') };
       default:
-        return { kind: 'ignored', eventId, type: p.type ?? 'unknown' };
+        return { kind: 'ignored', eventId, type: payload.type ?? 'unknown' };
     }
   }
 }

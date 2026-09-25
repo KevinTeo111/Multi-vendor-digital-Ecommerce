@@ -10,7 +10,7 @@ import { formatMoney } from './format';
 
 const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000').replace(/\/+$/, '').replace(/\/api$/, '');
 
-export type RealtimeEvent = 'product.status' | 'product.submitted' | 'withdrawal.status' | 'withdrawal.requested' | 'sale.new' | 'order.paid';
+export type RealtimeEvent = 'product.status' | 'product.submitted' | 'withdrawal.status' | 'withdrawal.requested' | 'sale.new' | 'subscription.status' | 'order.paid';
 type Handler = (payload: Record<string, unknown>) => void;
 
 interface RealtimeState {
@@ -53,7 +53,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     const dispatch = (event: RealtimeEvent) => (payload: Record<string, unknown>) => {
       handlers.current.get(event)?.forEach((h) => h(payload));
     };
-    const events: RealtimeEvent[] = ['product.status', 'product.submitted', 'withdrawal.status', 'withdrawal.requested', 'sale.new', 'order.paid'];
+    const events: RealtimeEvent[] = ['product.status', 'product.submitted', 'withdrawal.status', 'withdrawal.requested', 'sale.new', 'subscription.status', 'order.paid'];
     for (const ev of events) socket.on(ev, dispatch(ev));
 
     // Toasts (in addition to page-level handlers)
@@ -80,6 +80,15 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     });
     socket.on('sale.new', (p: { productTitle: string; vendorNetCents: number }) => {
       toast.push(t('toast.newSale', { title: p.productTitle, amount: formatMoney(p.vendorNetCents) }), { tone: 'success', action: { label: t('dashboard.navOrders'), href: '/vendor/sales' } });
+    });
+    socket.on('subscription.status', (p: { status: string }) => {
+      const map: Record<string, { key: string; tone: 'success' | 'error' | 'info' }> = {
+        ACTIVE: { key: 'toast.subscriptionActive', tone: 'success' },
+        PAST_DUE: { key: 'toast.subscriptionPastDue', tone: 'error' },
+        CANCELED: { key: 'toast.subscriptionCanceled', tone: 'info' },
+      };
+      const entry = map[p.status];
+      if (entry) toast.push(t(entry.key), { tone: entry.tone, action: { label: t('dashboard.navPlan'), href: '/vendor/subscription' } });
     });
     socket.on('order.paid', (p: { orderId: string; orderNumber: string }) => {
       toast.push(t('toast.orderPaid', { number: p.orderNumber }), { tone: 'success', action: { label: t('nav.myDownloads'), href: '/library' } });

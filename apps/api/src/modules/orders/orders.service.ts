@@ -133,8 +133,8 @@ export class OrdersService {
         currency: order.currency,
         customer: buyer,
         items: order.items.map((i) => ({ description: i.productTitle, amountCents: i.priceCents, quantity: 1 })),
-        successUrl: `${env.WEB_URL}/orders/${order.id}?status=success`,
-        cancelUrl: `${env.WEB_URL}/orders/${order.id}?status=canceled`,
+        successUrl: `${env.WEB_URL.split(',')[0].trim()}/orders/${order.id}?status=success`,
+        cancelUrl: `${env.WEB_URL.split(',')[0].trim()}/cart?status=canceled`,
       });
     } catch (err) {
       this.logger.error(`Gateway checkout failed for order ${order.orderNumber}: ${(err as Error).message}`);

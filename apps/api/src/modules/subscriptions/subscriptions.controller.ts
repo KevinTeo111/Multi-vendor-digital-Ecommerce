@@ -9,11 +9,6 @@ import { SubscriptionsService } from './subscriptions.service';
 class SubscribeDto {
   @IsString()
   planId: string;
-
-  /** Card token from the payment provider's client-side tokenization; required for paid plans on Pagar.me. */
-  @IsOptional()
-  @IsString()
-  cardToken?: string;
 }
 
 class AdminListQuery {
@@ -32,7 +27,7 @@ export class VendorSubscriptionController {
 
   @Post()
   subscribe(@CurrentUser('vendorId') vendorId: string, @Body() dto: SubscribeDto) {
-    return this.subscriptions.subscribe(vendorId, dto.planId, dto.cardToken);
+    return this.subscriptions.subscribe(vendorId, dto.planId);
   }
 
   @Delete()

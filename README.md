@@ -151,20 +151,27 @@ npm run build               # all workspaces
 ## Payment gateway
 
 `PAYMENT_GATEWAY=mock` (default) completes every payment, subscription and transfer instantly.
-`PAYMENT_GATEWAY=pagarme` uses `apps/api/src/modules/payments/gateway/pagarme.gateway.ts`:
+`PAYMENT_GATEWAY=stripe` uses `apps/api/src/modules/payments/gateway/stripe.gateway.ts`:
 
-- Orders use the hosted checkout (credit card, PIX, boleto); the buyer is redirected to Pagar.me.
-- Paid plans are recurring subscriptions; the card is tokenized in the browser with
-  `NEXT_PUBLIC_PAGARME_PUBLIC_KEY`, so card data never reaches the API. Free plans skip the gateway.
-- Vendor payouts create a Pagar.me recipient from the vendor's bank details and request a withdrawal.
-- Webhooks are authenticated with the Basic credentials configured in the Pagar.me dashboard
-  (`PAGARME_WEBHOOK_SECRET=user:password`).
+- Orders use Stripe Checkout in payment mode. Payment methods are whatever is enabled in the Stripe
+  dashboard (card, Pix and boleto for a Brazilian account). The order stores the Checkout Session id;
+  `checkout.session.completed` / `async_payment_succeeded` mark it paid, `async_payment_failed` /
+  `expired` mark it failed.
+- Paid plans use Stripe Checkout in subscription mode. The adapter creates a Stripe Price per plan
+  on first use (`syncPlan`) and recreates it when the admin changes the price or interval. The
+  subscription row first holds the session id; the webhook swaps in the real `sub_…` id and the
+  billing period. `invoice.paid` renews, `invoice.payment_failed` sets past due,
+  `customer.subscription.deleted` cancels. Cancelling sets `cancel_at_period_end`, so access lasts
+  until the paid period ends. Free plans never touch Stripe.
+- Payouts stay manual (admin pays by PIX or bank transfer and marks the withdrawal paid). Automated
+  payouts would use Stripe Connect and are a Phase 2 item.
+- Webhook endpoint: `POST /api/webhooks/payments`, verified with `STRIPE_WEBHOOK_SECRET` against the raw
+  body. Events to subscribe: `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
+  `checkout.session.async_payment_failed`, `checkout.session.expired`, `invoice.paid`,
+  `invoice.payment_failed`, `customer.subscription.deleted`.
 
-Spots marked `SANDBOX-CHECK` in the adapter must be confirmed against a real sandbox account
-(hosted-checkout payload, subscription payload, withdrawal endpoint, webhook event names). Also
-note that a recipient can only be paid out from balance Pagar.me holds for it; the final payout
-mechanics (split on each order vs platform-initiated transfer) must be settled with Pagar.me's
-account team once the account is approved.
+Required variables: `STRIPE_SECRET_KEY` (`sk_test_…` / `sk_live_…`) and `STRIPE_WEBHOOK_SECRET` (`whsec_…`).
+Nothing Stripe-related is exposed to the browser.
 
 ## Not in the MVP (planned next)
 

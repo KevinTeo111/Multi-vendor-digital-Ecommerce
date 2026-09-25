@@ -49,8 +49,12 @@ export class PlansService {
   }
 
   async update(id: string, dto: UpdatePlanDto) {
-    await this.getById(id);
-    return this.prisma.plan.update({ where: { id }, data: dto });
+    const current = await this.getById(id);
+    // Billing terms changed: drop the provider price so the next subscription creates a fresh one.
+    const billingChanged =
+      (dto.priceCents !== undefined && dto.priceCents !== current.priceCents) ||
+      (dto.interval !== undefined && dto.interval !== current.interval);
+    return this.prisma.plan.update({ where: { id }, data: { ...dto, ...(billingChanged ? { gatewayPlanId: null } : {}) } });
   }
 
   /** Plans are never hard-deleted because order items snapshot them; deactivate instead. */
