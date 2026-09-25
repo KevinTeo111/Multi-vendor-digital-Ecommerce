@@ -8,9 +8,18 @@ import { useT } from '@/i18n/client';
 import { getTokens } from './api';
 import { formatMoney } from './format';
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000').replace(/\/+$/, '').replace(/\/api$/, '');
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000')
+  .replace(/\/+$/, '')
+  .replace(/\/api$/, '');
 
-export type RealtimeEvent = 'product.status' | 'product.submitted' | 'withdrawal.status' | 'withdrawal.requested' | 'sale.new' | 'subscription.status' | 'order.paid';
+export type RealtimeEvent =
+  | 'product.status'
+  | 'product.submitted'
+  | 'withdrawal.status'
+  | 'withdrawal.requested'
+  | 'sale.new'
+  | 'subscription.status'
+  | 'order.paid';
 type Handler = (payload: Record<string, unknown>) => void;
 
 interface RealtimeState {
@@ -53,7 +62,15 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     const dispatch = (event: RealtimeEvent) => (payload: Record<string, unknown>) => {
       handlers.current.get(event)?.forEach((h) => h(payload));
     };
-    const events: RealtimeEvent[] = ['product.status', 'product.submitted', 'withdrawal.status', 'withdrawal.requested', 'sale.new', 'subscription.status', 'order.paid'];
+    const events: RealtimeEvent[] = [
+      'product.status',
+      'product.submitted',
+      'withdrawal.status',
+      'withdrawal.requested',
+      'sale.new',
+      'subscription.status',
+      'order.paid',
+    ];
     for (const ev of events) socket.on(ev, dispatch(ev));
 
     // Toasts (in addition to page-level handlers)
@@ -64,22 +81,39 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
         BLOCKED: { key: 'toast.productBlocked', tone: 'error' },
         DRAFT: { key: 'toast.productUnblocked', tone: 'info' },
       };
-      const entry = map[p.status] ?? (p.status === 'APPROVED' ? map.APPROVED : { key: 'toast.productUnblocked', tone: 'info' as const });
-      toast.push(t(entry.key, { title: p.title, reason: p.reason ?? '' }), { tone: entry.tone, action: { label: t('dashboard.navProducts'), href: '/vendor/products' } });
+      const entry =
+        map[p.status] ??
+        (p.status === 'APPROVED'
+          ? map.APPROVED
+          : { key: 'toast.productUnblocked', tone: 'info' as const });
+      toast.push(t(entry.key, { title: p.title, reason: p.reason ?? '' }), {
+        tone: entry.tone,
+        action: { label: t('dashboard.navProducts'), href: '/vendor/products' },
+      });
     });
-    socket.on('withdrawal.status', (p: { status: string; amountCents: number; reason?: string | null }) => {
-      const amount = formatMoney(p.amountCents);
-      const map: Record<string, { key: string; tone: 'success' | 'error' | 'info' }> = {
-        APPROVED: { key: 'toast.withdrawalApproved', tone: 'success' },
-        PAID: { key: 'toast.withdrawalPaid', tone: 'success' },
-        REJECTED: { key: 'toast.withdrawalRejected', tone: 'error' },
-        FAILED: { key: 'toast.withdrawalFailed', tone: 'error' },
-      };
-      const entry = map[p.status];
-      if (entry) toast.push(t(entry.key, { amount, reason: p.reason ?? '' }), { tone: entry.tone, action: { label: t('dashboard.navEarnings'), href: '/vendor/finance' } });
-    });
+    socket.on(
+      'withdrawal.status',
+      (p: { status: string; amountCents: number; reason?: string | null }) => {
+        const amount = formatMoney(p.amountCents);
+        const map: Record<string, { key: string; tone: 'success' | 'error' | 'info' }> = {
+          APPROVED: { key: 'toast.withdrawalApproved', tone: 'success' },
+          PAID: { key: 'toast.withdrawalPaid', tone: 'success' },
+          REJECTED: { key: 'toast.withdrawalRejected', tone: 'error' },
+          FAILED: { key: 'toast.withdrawalFailed', tone: 'error' },
+        };
+        const entry = map[p.status];
+        if (entry)
+          toast.push(t(entry.key, { amount, reason: p.reason ?? '' }), {
+            tone: entry.tone,
+            action: { label: t('dashboard.navEarnings'), href: '/vendor/finance' },
+          });
+      },
+    );
     socket.on('sale.new', (p: { productTitle: string; vendorNetCents: number }) => {
-      toast.push(t('toast.newSale', { title: p.productTitle, amount: formatMoney(p.vendorNetCents) }), { tone: 'success', action: { label: t('dashboard.navOrders'), href: '/vendor/sales' } });
+      toast.push(
+        t('toast.newSale', { title: p.productTitle, amount: formatMoney(p.vendorNetCents) }),
+        { tone: 'success', action: { label: t('dashboard.navOrders'), href: '/vendor/sales' } },
+      );
     });
     socket.on('subscription.status', (p: { status: string }) => {
       const map: Record<string, { key: string; tone: 'success' | 'error' | 'info' }> = {
@@ -88,17 +122,28 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
         CANCELED: { key: 'toast.subscriptionCanceled', tone: 'info' },
       };
       const entry = map[p.status];
-      if (entry) toast.push(t(entry.key), { tone: entry.tone, action: { label: t('dashboard.navPlan'), href: '/vendor/subscription' } });
+      if (entry)
+        toast.push(t(entry.key), {
+          tone: entry.tone,
+          action: { label: t('dashboard.navPlan'), href: '/vendor/subscription' },
+        });
     });
     socket.on('order.paid', (p: { orderId: string; orderNumber: string }) => {
-      toast.push(t('toast.orderPaid', { number: p.orderNumber }), { tone: 'success', action: { label: t('nav.myDownloads'), href: '/library' } });
+      toast.push(t('toast.orderPaid', { number: p.orderNumber }), {
+        tone: 'success',
+        action: { label: t('nav.myDownloads'), href: '/library' },
+      });
     });
     if (user.role === 'ADMIN') {
       socket.on('product.submitted', (p: { title: string }) => {
-        toast.push(t('toast.newSubmission', { title: p.title }), { action: { label: t('dashboard.navProductReview'), href: '/admin/products' } });
+        toast.push(t('toast.newSubmission', { title: p.title }), {
+          action: { label: t('dashboard.navProductReview'), href: '/admin/products' },
+        });
       });
       socket.on('withdrawal.requested', (p: { amountCents: number }) => {
-        toast.push(t('toast.newWithdrawalRequest', { amount: formatMoney(p.amountCents) }), { action: { label: t('dashboard.navWithdrawals'), href: '/admin/withdrawals' } });
+        toast.push(t('toast.newWithdrawalRequest', { amount: formatMoney(p.amountCents) }), {
+          action: { label: t('dashboard.navWithdrawals'), href: '/admin/withdrawals' },
+        });
       });
     }
 
@@ -118,7 +163,9 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     };
   };
 
-  return <RealtimeContext.Provider value={{ connected, subscribe }}>{children}</RealtimeContext.Provider>;
+  return (
+    <RealtimeContext.Provider value={{ connected, subscribe }}>{children}</RealtimeContext.Provider>
+  );
 }
 
 export function useRealtime() {

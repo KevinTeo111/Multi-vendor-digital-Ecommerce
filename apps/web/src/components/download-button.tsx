@@ -6,7 +6,15 @@ import { api, ApiError } from '@/lib/api';
 import { DownloadIcon } from './icons';
 import { Button } from './ui';
 
-export function DownloadButton({ orderItemId, fileId, label }: { orderItemId: string; fileId?: string; label?: string }) {
+export function DownloadButton({
+  orderItemId,
+  fileId,
+  label,
+}: {
+  orderItemId: string;
+  fileId?: string;
+  label?: string;
+}) {
   const t = useT();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -15,7 +23,9 @@ export function DownloadButton({ orderItemId, fileId, label }: { orderItemId: st
     setLoading(true);
     setError(null);
     try {
-      const path = fileId ? `/orders/items/${orderItemId}/files/${fileId}/download` : `/orders/items/${orderItemId}/download`;
+      const path = fileId
+        ? `/orders/items/${orderItemId}/files/${fileId}/download`
+        : `/orders/items/${orderItemId}/download`;
       const res = await api<{ url: string }>(path);
       window.location.assign(res.url);
     } catch (err) {

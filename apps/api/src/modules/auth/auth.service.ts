@@ -59,7 +59,13 @@ export class AuthService {
       }
 
       await this.audit.log(
-        { actorId: created.id, action: 'auth.register', entityType: 'User', entityId: created.id, metadata: { role } },
+        {
+          actorId: created.id,
+          action: 'auth.register',
+          entityType: 'User',
+          entityId: created.id,
+          metadata: { role },
+        },
         tx,
       );
 
@@ -93,14 +99,22 @@ export class AuthService {
 
     const tokenHash = this.hashToken(refreshToken);
     const stored = await this.prisma.refreshToken.findUnique({ where: { tokenHash } });
-    if (!stored || stored.revokedAt || stored.expiresAt < new Date() || stored.userId !== payload.sub) {
+    if (
+      !stored ||
+      stored.revokedAt ||
+      stored.expiresAt < new Date() ||
+      stored.userId !== payload.sub
+    ) {
       throw new UnauthorizedException('Refresh token is expired or revoked');
     }
 
     const user = await this.prisma.user.findUnique({ where: { id: stored.userId } });
     if (!user || user.status !== UserStatus.ACTIVE) throw new UnauthorizedException();
 
-    await this.prisma.refreshToken.update({ where: { id: stored.id }, data: { revokedAt: new Date() } });
+    await this.prisma.refreshToken.update({
+      where: { id: stored.id },
+      data: { revokedAt: new Date() },
+    });
     return this.issueTokens(user.id, user.role);
   }
 

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useState } from 'react';
+import { DefinitionRow as Row } from '@/components/definition-row';
 import { Alert, Badge, Button, Card, Loading, Modal, PageHeader, Textarea } from '@/components/ui';
 import { useT } from '@/i18n/client';
 import { api } from '@/lib/api';
@@ -18,11 +19,14 @@ export default function AdminProductDetail() {
   const [modal, setModal] = useState<'reject' | 'block' | null>(null);
   const [reason, setReason] = useState('');
 
-  if (!product.data) return product.error ? <Alert tone="error">{product.error}</Alert> : <Loading />;
+  if (!product.data)
+    return product.error ? <Alert tone="error">{product.error}</Alert> : <Loading />;
   const p = product.data;
 
   const run = async (verb: string, body?: unknown) => {
-    const ok = await action.run(() => api(`/admin/products/${id}/${verb}`, { method: 'POST', body }));
+    const ok = await action.run(() =>
+      api(`/admin/products/${id}/${verb}`, { method: 'POST', body }),
+    );
     if (ok !== undefined) {
       setModal(null);
       setReason('');
@@ -31,7 +35,9 @@ export default function AdminProductDetail() {
   };
 
   const openFile = async (fileId: string) => {
-    const res = await action.run(() => api<{ url: string }>(`/admin/products/${id}/files/${fileId}/download-url`));
+    const res = await action.run(() =>
+      api<{ url: string }>(`/admin/products/${id}/files/${fileId}/download-url`),
+    );
     if (res) window.open(res.url, '_blank');
   };
 
@@ -67,20 +73,34 @@ export default function AdminProductDetail() {
         }
       />
       {action.error && <Alert tone="error">{action.error}</Alert>}
-      {p.rejectionReason && <Alert tone="warning">{t('admin.lastReason', { reason: p.rejectionReason })}</Alert>}
+      {p.rejectionReason && (
+        <Alert tone="warning">{t('admin.lastReason', { reason: p.rejectionReason })}</Alert>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="space-y-6">
           {p.thumbnailUrl && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={p.thumbnailUrl} alt="" className="w-full max-w-xl rounded-2xl border border-slate-200" />
+            <img
+              src={p.thumbnailUrl}
+              alt=""
+              className="w-full max-w-xl rounded-2xl border border-slate-200"
+            />
           )}
           {p.previewImageUrls && p.previewImageUrls.length > 0 && (
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-              {p.previewImageUrls.map((u, i) => u && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img key={i} src={u} alt="" className="aspect-[4/3] w-full rounded object-cover" />
-              ))}
+              {p.previewImageUrls.map(
+                (u, i) =>
+                  u && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      key={i}
+                      src={u}
+                      alt=""
+                      className="aspect-[4/3] w-full rounded object-cover"
+                    />
+                  ),
+              )}
             </div>
           )}
           <Card title={t('admin.shortDescription')}>
@@ -97,12 +117,28 @@ export default function AdminProductDetail() {
               <Row label={t('vendor.price')}>{formatMoney(p.priceCents, p.currency)}</Row>
               <Row label={t('product.category')}>{p.category.name}</Row>
               <Row label={t('vendor.formVersion')}>{p.version ?? '—'}</Row>
-              <Row label={t('admin.demo')}>{p.demoUrl ? <a href={p.demoUrl} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">{t('admin.open')} ↗</a> : '—'}</Row>
+              <Row label={t('admin.demo')}>
+                {p.demoUrl ? (
+                  <a
+                    href={p.demoUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-brand-600 hover:underline"
+                  >
+                    {t('admin.open')} ↗
+                  </a>
+                ) : (
+                  '—'
+                )}
+              </Row>
               <Row label={t('admin.tags')}>{p.tags.join(', ') || '—'}</Row>
               <Row label={t('admin.submitted')}>{formatDate(p.submittedAt, true)}</Row>
               <Row label={t('store.sales')}>{p.salesCount}</Row>
               <Row label={t('admin.vendor')}>
-                <Link href={`/admin/vendors?search=${encodeURIComponent(p.vendor?.slug ?? '')}`} className="text-brand-600 hover:underline">
+                <Link
+                  href={`/admin/vendors?search=${encodeURIComponent(p.vendor?.slug ?? '')}`}
+                  className="text-brand-600 hover:underline"
+                >
                   {p.vendor?.storeName}
                 </Link>
               </Row>
@@ -113,40 +149,43 @@ export default function AdminProductDetail() {
               {(p.files ?? []).map((f) => (
                 <li key={f.id} className="flex items-center justify-between gap-2">
                   <span className="truncate">
-                    {f.fileName} <span className="text-xs text-slate-500">({formatBytes(f.sizeBytes)})</span>
+                    {f.fileName}{' '}
+                    <span className="text-xs text-slate-500">({formatBytes(f.sizeBytes)})</span>
                   </span>
                   <Button size="sm" variant="secondary" onClick={() => openFile(f.id)}>
                     {t('admin.inspect')}
                   </Button>
                 </li>
               ))}
-              {(p.files ?? []).length === 0 && <li className="text-slate-500">{t('admin.noFiles')}</li>}
+              {(p.files ?? []).length === 0 && (
+                <li className="text-slate-500">{t('admin.noFiles')}</li>
+              )}
             </ul>
           </Card>
         </div>
       </div>
 
-      <Modal open={modal !== null} title={modal === 'reject' ? t('admin.rejectProduct') : t('admin.blockProduct')} onClose={() => setModal(null)}>
+      <Modal
+        open={modal !== null}
+        title={modal === 'reject' ? t('admin.rejectProduct') : t('admin.blockProduct')}
+        onClose={() => setModal(null)}
+      >
         <p className="mb-2 text-sm text-slate-500">{t('admin.vendorSeesReason')}</p>
         <Textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={4} />
         <div className="mt-4 flex justify-end gap-2">
           <Button variant="secondary" onClick={() => setModal(null)}>
             {t('common.cancel')}
           </Button>
-          <Button variant="danger" disabled={modal === 'reject' && reason.trim().length < 3} loading={action.busy} onClick={() => run(modal!, { reason })}>
+          <Button
+            variant="danger"
+            disabled={modal === 'reject' && reason.trim().length < 3}
+            loading={action.busy}
+            onClick={() => run(modal!, { reason })}
+          >
             {t('common.confirm')}
           </Button>
         </div>
       </Modal>
-    </div>
-  );
-}
-
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex justify-between gap-4">
-      <dt className="text-slate-500">{label}</dt>
-      <dd className="text-right">{children}</dd>
     </div>
   );
 }

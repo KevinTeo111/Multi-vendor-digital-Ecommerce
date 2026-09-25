@@ -29,7 +29,13 @@ export function useFetch<T>(path: string | null, query?: Query) {
     void reload();
   }, [reload]);
 
-  return { data, error, loading, reload, setData: setData as React.Dispatch<React.SetStateAction<T | null>> };
+  return {
+    data,
+    error,
+    loading,
+    reload,
+    setData: setData as React.Dispatch<React.SetStateAction<T | null>>,
+  };
 }
 
 /** Wraps a mutation with busy/error state. */
@@ -37,13 +43,13 @@ export function useAction() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const run = useCallback(async <R,>(fn: () => Promise<R>): Promise<R | undefined> => {
+  const run = useCallback(async <R>(fn: () => Promise<R>): Promise<R | undefined> => {
     setBusy(true);
     setError(null);
     try {
       return await fn();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : (err as Error).message ?? 'Action failed');
+      setError(err instanceof ApiError ? err.message : ((err as Error).message ?? 'Action failed'));
       return undefined;
     } finally {
       setBusy(false);

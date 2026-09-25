@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, Role, UserStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import { PaginationDto, paginate } from '../../common/dto/pagination.dto';
+import { PaginationDto, findPage } from '../../common/dto/pagination.dto';
 
 export const publicUserSelect = {
   id: true,
@@ -40,17 +40,18 @@ export class UsersService {
           }
         : {}),
     };
-    const [items, total] = await this.prisma.$transaction([
-      this.prisma.user.findMany({
-        where,
-        select: publicUserSelect,
-        orderBy: { createdAt: 'desc' },
-        skip: dto.skip,
-        take: dto.pageSize,
-      }),
-      this.prisma.user.count({ where }),
-    ]);
-    return paginate(items, total, dto);
+    return findPage(
+      dto,
+      () =>
+        this.prisma.user.findMany({
+          where,
+          select: publicUserSelect,
+          orderBy: { createdAt: 'desc' },
+          skip: dto.skip,
+          take: dto.pageSize,
+        }),
+      () => this.prisma.user.count({ where }),
+    );
   }
 
   async setStatus(id: string, status: UserStatus) {

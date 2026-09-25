@@ -43,7 +43,10 @@ export function ProductForm({
     tags: (initial?.tags ?? []).join(', '),
   });
 
-  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setForm({ ...form, [k]: e.target.value });
+  const set =
+    (k: keyof typeof form) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
+      setForm({ ...form, [k]: e.target.value });
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -79,14 +82,33 @@ export function ProductForm({
           </Select>
         </Field>
         <Field label={t('vendor.formPrice')} hint={t('vendor.formPriceHint')}>
-          <Input type="number" min={0} step="0.01" value={form.price} onChange={set('price')} required />
+          <Input
+            type="number"
+            min={0}
+            step="0.01"
+            value={form.price}
+            onChange={set('price')}
+            required
+          />
         </Field>
       </div>
       <Field label={t('vendor.formShort')} hint={t('vendor.formShortHint')}>
-        <Input value={form.shortDescription} onChange={set('shortDescription')} required minLength={10} maxLength={300} />
+        <Input
+          value={form.shortDescription}
+          onChange={set('shortDescription')}
+          required
+          minLength={10}
+          maxLength={300}
+        />
       </Field>
       <Field label={t('vendor.formDescription')}>
-        <Textarea value={form.description} onChange={set('description')} required minLength={20} rows={10} />
+        <Textarea
+          value={form.description}
+          onChange={set('description')}
+          required
+          minLength={20}
+          rows={10}
+        />
       </Field>
       <div className="grid gap-4 sm:grid-cols-3">
         <Field label={t('vendor.formDemo')}>

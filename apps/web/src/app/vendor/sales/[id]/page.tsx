@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { DefinitionRow as Row } from '@/components/definition-row';
 import { ArrowRightIcon } from '@/components/icons';
 import { Alert, Badge, Card, Loading, PageHeader } from '@/components/ui';
 import { useLocale } from '@/i18n/client';
@@ -25,7 +26,10 @@ export default function VendorSaleDetailPage() {
         title={t('vendor.saleTitle', { number: s.order.orderNumber })}
         description={t('vendor.saleDescription')}
         actions={
-          <Link href="/vendor/sales" className="group inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-navy-900 shadow-sm hover:border-brand-500 hover:text-brand-600">
+          <Link
+            href="/vendor/sales"
+            className="group inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-navy-900 shadow-sm hover:border-brand-500 hover:text-brand-600"
+          >
             <ArrowRightIcon size={16} className="rotate-180" /> {t('vendor.backToOrders')}
           </Link>
         }
@@ -41,14 +45,21 @@ export default function VendorSaleDetailPage() {
               )}
             </div>
             <div className="min-w-0">
-              <Link href={`/products/${s.product.slug}`} className="text-lg font-semibold text-navy-900 hover:text-brand-600">
+              <Link
+                href={`/products/${s.product.slug}`}
+                className="text-lg font-semibold text-navy-900 hover:text-brand-600"
+              >
                 {s.productTitle}
               </Link>
-              {s.product.version && <div className="text-xs text-slate-500">v{s.product.version}</div>}
+              {s.product.version && (
+                <div className="text-xs text-slate-500">v{s.product.version}</div>
+              )}
               <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
                 <Row label={t('vendor.buyer')}>{s.order.buyer.name}</Row>
                 <Row label={t('vendor.paidAt')}>{formatDate(s.order.paidAt, true)}</Row>
-                <Row label={t('vendor.paymentMethod')}>{s.order.paymentMethod ?? t('common.notAvailable')}</Row>
+                <Row label={t('vendor.paymentMethod')}>
+                  {s.order.paymentMethod ?? t('common.notAvailable')}
+                </Row>
                 <Row label={t('vendor.downloads')}>{s.downloads}</Row>
               </dl>
             </div>
@@ -62,12 +73,15 @@ export default function VendorSaleDetailPage() {
             </Row>
             <Row label={t('vendor.platformCommission')}>
               <span>
-                − {formatMoney(s.commissionCents, s.order.currency)} <span className="text-xs text-slate-500">({formatBps(s.commissionRateBps)})</span>
+                − {formatMoney(s.commissionCents, s.order.currency)}{' '}
+                <span className="text-xs text-slate-500">({formatBps(s.commissionRateBps)})</span>
               </span>
             </Row>
             <div className="border-t border-slate-200 pt-3">
               <Row label={t('vendor.yourNet')}>
-                <span className="text-lg font-bold text-navy-900">{formatMoney(s.vendorNetCents, s.order.currency)}</span>
+                <span className="text-lg font-bold text-navy-900">
+                  {formatMoney(s.vendorNetCents, s.order.currency)}
+                </span>
               </Row>
             </div>
             <Row label={t('vendor.planAtSale')}>{s.plan?.name ?? t('common.notAvailable')}</Row>
@@ -75,7 +89,11 @@ export default function VendorSaleDetailPage() {
               {credit ? (
                 <span className="flex items-center gap-2">
                   <Badge status={credit.status} />
-                  <span className="text-xs text-slate-500">{credit.status === 'AVAILABLE' ? t('vendor.payoutAvailable') : t('vendor.payoutPending', { date: formatDate(credit.availableAt) })}</span>
+                  <span className="text-xs text-slate-500">
+                    {credit.status === 'AVAILABLE'
+                      ? t('vendor.payoutAvailable')
+                      : t('vendor.payoutPending', { date: formatDate(credit.availableAt) })}
+                  </span>
                 </span>
               ) : (
                 statusLabel('PENDING')
@@ -84,15 +102,6 @@ export default function VendorSaleDetailPage() {
           </dl>
         </Card>
       </div>
-    </div>
-  );
-}
-
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between gap-4">
-      <dt className="text-slate-500">{label}</dt>
-      <dd className="text-right text-navy-900">{children}</dd>
     </div>
   );
 }

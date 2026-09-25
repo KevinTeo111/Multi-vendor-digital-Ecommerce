@@ -38,7 +38,12 @@ function CartView() {
 
   /** Browser history restores the previous page and its scroll position; fall back to the catalog. */
   const continueShopping = () => {
-    if (window.history.length > 1 && document.referrer && new URL(document.referrer).origin === window.location.origin) router.back();
+    if (
+      window.history.length > 1 &&
+      document.referrer &&
+      new URL(document.referrer).origin === window.location.origin
+    )
+      router.back();
     else router.push('/products');
   };
 
@@ -46,7 +51,9 @@ function CartView() {
     setBusy(true);
     setError(null);
     try {
-      const res = await api<{ order: Order; checkoutUrl: string | null }>('/checkout', { method: 'POST' });
+      const res = await api<{ order: Order; checkoutUrl: string | null }>('/checkout', {
+        method: 'POST',
+      });
       setCount(0);
       if (res.checkoutUrl) window.location.href = res.checkoutUrl;
       else router.push(`/orders/${res.order.id}`);
@@ -64,7 +71,10 @@ function CartView() {
         title={t('cart.title')}
         description={cart.items.length ? t('cart.items', { count: cart.items.length }) : undefined}
         actions={
-          <button onClick={continueShopping} className="group inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-navy-900 shadow-sm hover:border-brand-500 hover:text-brand-600">
+          <button
+            onClick={continueShopping}
+            className="group inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-navy-900 shadow-sm hover:border-brand-500 hover:text-brand-600"
+          >
             <ArrowRightIcon size={16} className="rotate-180" /> {t('cart.continueShopping')}
           </button>
         }
@@ -76,7 +86,14 @@ function CartView() {
         </div>
       )}
       {cart.items.length === 0 ? (
-        <EmptyState title={t('cart.empty')} action={<LinkButton href="/products" arrow>{t('cart.browse')}</LinkButton>} />
+        <EmptyState
+          title={t('cart.empty')}
+          action={
+            <LinkButton href="/products" arrow>
+              {t('cart.browse')}
+            </LinkButton>
+          }
+        />
       ) : (
         <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
           <Card padded={false}>
@@ -86,19 +103,33 @@ function CartView() {
                   <div className="h-14 w-20 shrink-0 overflow-hidden rounded-lg bg-slate-100">
                     {item.product.thumbnailUrl && (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={item.product.thumbnailUrl} alt="" className="h-full w-full object-cover" />
+                      <img
+                        src={item.product.thumbnailUrl}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <Link href={`/products/${item.product.slug}`} className="block truncate font-medium text-navy-900 hover:text-brand-600">
+                    <Link
+                      href={`/products/${item.product.slug}`}
+                      className="block truncate font-medium text-navy-900 hover:text-brand-600"
+                    >
                       {item.product.title}
                     </Link>
                     <span className="text-xs text-slate-500">
                       {t('product.by')} {item.product.vendor.storeName}
                     </span>
                   </div>
-                  <span className="font-semibold text-navy-900">{formatMoney(item.product.priceCents, item.product.currency)}</span>
-                  <Button variant="ghost" size="sm" onClick={() => remove(item.productId)} aria-label={`${t('common.remove')} ${item.product.title}`}>
+                  <span className="font-semibold text-navy-900">
+                    {formatMoney(item.product.priceCents, item.product.currency)}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => remove(item.productId)}
+                    aria-label={`${t('common.remove')} ${item.product.title}`}
+                  >
                     {t('common.remove')}
                   </Button>
                 </li>

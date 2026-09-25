@@ -1,13 +1,16 @@
 import { Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { OnGatewayConnection, OnGatewayInit, WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
+import {
+  OnGatewayConnection,
+  OnGatewayInit,
+  WebSocketGateway,
+  WebSocketServer,
+} from '@nestjs/websockets';
 import { Role, UserStatus } from '@prisma/client';
 import type { Server, Socket } from 'socket.io';
-import { env } from '../../config/env';
+import { env, webOrigins } from '../../config/env';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { JwtPayload } from '../../common/types/auth-user';
-
-const origins = env.WEB_URL.split(',').map((o) => o.trim()).filter(Boolean);
 
 /**
  * Socket.IO namespace `/realtime`. Clients authenticate with the same access token as the REST API
@@ -19,7 +22,7 @@ const origins = env.WEB_URL.split(',').map((o) => o.trim()).filter(Boolean);
  */
 @WebSocketGateway({
   namespace: 'realtime',
-  cors: { origin: origins.length === 1 ? origins[0] : origins, credentials: true },
+  cors: { origin: webOrigins, credentials: true },
 })
 export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
   @WebSocketServer() server: Server;
@@ -35,7 +38,9 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayConnection {
   }
 
   async handleConnection(client: Socket) {
-    const token = (client.handshake.auth?.token as string | undefined) ?? this.bearer(client.handshake.headers.authorization);
+    const token =
+      (client.handshake.auth?.token as string | undefined) ??
+      this.bearer(client.handshake.headers.authorization);
     if (!token) return client.disconnect(true);
 
     let payload: JwtPayload;

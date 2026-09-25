@@ -2,7 +2,7 @@ import { Inject, Injectable, Logger, UnauthorizedException } from '@nestjs/commo
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { WithdrawalsService } from '../finance/withdrawals.service';
-import { OrdersService } from '../orders/orders.service';
+import { CheckoutService } from '../orders/checkout.service';
 import {
   NormalizedWebhookEvent,
   PAYMENT_GATEWAY,
@@ -18,7 +18,7 @@ export class WebhooksService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly orders: OrdersService,
+    private readonly checkout: CheckoutService,
     private readonly subscriptions: SubscriptionsService,
     private readonly withdrawals: WithdrawalsService,
     @Inject(PAYMENT_GATEWAY) private readonly gateway: PaymentGateway,
@@ -58,7 +58,10 @@ export class WebhooksService {
 
     try {
       await this.dispatch(event);
-      await this.prisma.webhookEvent.update({ where: { id: record.id }, data: { processedAt: new Date() } });
+      await this.prisma.webhookEvent.update({
+        where: { id: record.id },
+        data: { processedAt: new Date() },
+      });
       return { received: true, kind: event.kind };
     } catch (err) {
       const message = (err as Error).message;
@@ -72,13 +75,25 @@ export class WebhooksService {
   private async dispatch(event: NormalizedWebhookEvent) {
     switch (event.kind) {
       case 'order.paid':
-        return this.orders.markPaidByGatewayId(event.gatewayOrderId, { chargeId: event.chargeId, paymentMethod: event.paymentMethod });
+        return this.checkout.markPaidByGatewayId(event.gatewayOrderId, {
+          chargeId: event.chargeId,
+          paymentMethod: event.paymentMethod,
+        });
       case 'order.failed':
-        return this.orders.markFailedByGatewayId(event.gatewayOrderId, event.reason);
+        return this.checkout.markFailedByGatewayId(event.gatewayOrderId, event.reason);
       case 'subscription.activated':
-        return this.subscriptions.markActive(event.gatewaySubscriptionId, event.periodStart, event.periodEnd, event.newGatewaySubscriptionId);
+        return this.subscriptions.markActive(
+          event.gatewaySubscriptionId,
+          event.periodStart,
+          event.periodEnd,
+          event.newGatewaySubscriptionId,
+        );
       case 'subscription.renewed':
-        return this.subscriptions.markActive(event.gatewaySubscriptionId, event.periodStart, event.periodEnd);
+        return this.subscriptions.markActive(
+          event.gatewaySubscriptionId,
+          event.periodStart,
+          event.periodEnd,
+        );
       case 'subscription.past_due':
         return this.subscriptions.markPastDue(event.gatewaySubscriptionId);
       case 'subscription.canceled':

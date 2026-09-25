@@ -23,14 +23,26 @@ export default function EditProductPage() {
 
   // Live status from the admin review, without reloading the page.
   useRealtimeEvent('product.status', (p) => {
-    if (p.productId === id) product.setData((prev) => (prev ? { ...prev, status: p.status as VendorProduct['status'], rejectionReason: (p.reason as string | null) ?? null } : prev));
+    if (p.productId === id)
+      product.setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: p.status as VendorProduct['status'],
+              rejectionReason: (p.reason as string | null) ?? null,
+            }
+          : prev,
+      );
   });
 
-  if (!product.data || !categories.data) return product.error ? <Alert tone="error">{product.error}</Alert> : <Loading />;
+  if (!product.data || !categories.data)
+    return product.error ? <Alert tone="error">{product.error}</Alert> : <Loading />;
   const p = product.data;
 
   const update = async (values: ProductFormValues) => {
-    const ok = await save.run(() => api(`/vendor/products/${id}`, { method: 'PATCH', body: values }));
+    const ok = await save.run(() =>
+      api(`/vendor/products/${id}`, { method: 'PATCH', body: values }),
+    );
     if (ok !== undefined) product.reload();
   };
 
@@ -67,7 +79,13 @@ export default function EditProductPage() {
 
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <Card title={t('vendor.details')}>
-          <ProductForm categories={categories.data} initial={p} onSubmit={update} busy={save.busy} error={save.error} />
+          <ProductForm
+            categories={categories.data}
+            initial={p}
+            onSubmit={update}
+            busy={save.busy}
+            error={save.error}
+          />
         </Card>
 
         <div className="space-y-6">
@@ -86,23 +104,34 @@ function ImagesPanel({ product, onChange }: { product: VendorProduct; onChange: 
 
   const upload = async (kind: 'thumbnail' | 'preview', file: File) => {
     await action.run(async () => {
-      const { uploadUrl, storageKey } = await api<{ uploadUrl: string; storageKey: string }>(`/vendor/products/${product.id}/images/upload-url`, {
-        method: 'POST',
-        body: { fileName: file.name, contentType: file.type, kind },
-      });
+      const { uploadUrl, storageKey } = await api<{ uploadUrl: string; storageKey: string }>(
+        `/vendor/products/${product.id}/images/upload-url`,
+        {
+          method: 'POST',
+          body: { fileName: file.name, contentType: file.type, kind },
+        },
+      );
       await uploadToPresignedUrl(uploadUrl, file, setProgress);
-      await api(`/vendor/products/${product.id}/images/confirm`, { method: 'POST', body: { storageKey, kind } });
+      await api(`/vendor/products/${product.id}/images/confirm`, {
+        method: 'POST',
+        body: { storageKey, kind },
+      });
     });
     setProgress(null);
     onChange();
   };
 
   const remove = async (storageKey: string) => {
-    await action.run(() => api(`/vendor/products/${product.id}/images`, { method: 'DELETE', body: { storageKey } }));
+    await action.run(() =>
+      api(`/vendor/products/${product.id}/images`, { method: 'DELETE', body: { storageKey } }),
+    );
     onChange();
   };
 
-  const previews = product.previewImageKeys.map((key, i) => ({ key, url: product.previewImageUrls?.[i] ?? null }));
+  const previews = product.previewImageKeys.map((key, i) => ({
+    key,
+    url: product.previewImageUrls?.[i] ?? null,
+  }));
 
   return (
     <Card title={t('vendor.images')}>
@@ -114,55 +143,99 @@ function ImagesPanel({ product, onChange }: { product: VendorProduct; onChange: 
             <div className="flex items-center gap-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={product.thumbnailUrl} alt="" className="h-16 w-24 rounded object-cover" />
-              <Button size="sm" variant="ghost" onClick={() => product.thumbnailKey && remove(product.thumbnailKey)}>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => product.thumbnailKey && remove(product.thumbnailKey)}
+              >
                 {t('common.remove')}
               </Button>
             </div>
           ) : (
-            <FilePicker accept="image/*" label={t('vendor.uploadThumbnail')} onPick={(f) => upload('thumbnail', f)} />
+            <FilePicker
+              accept="image/*"
+              label={t('vendor.uploadThumbnail')}
+              onPick={(f) => upload('thumbnail', f)}
+            />
           )}
         </div>
         <div>
-          <div className="mb-1 font-medium">{t('vendor.previewImages', { count: previews.length })}</div>
+          <div className="mb-1 font-medium">
+            {t('vendor.previewImages', { count: previews.length })}
+          </div>
           <div className="grid grid-cols-3 gap-2">
             {previews.map((img) => (
               <div key={img.key} className="relative">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                {img.url && <img src={img.url} alt="" className="aspect-[4/3] w-full rounded object-cover" />}
-                <button onClick={() => remove(img.key)} className="absolute right-1 top-1 rounded bg-black/60 px-1 text-xs text-white" aria-label={t('common.remove')}>
+                {img.url && (
+                  <img src={img.url} alt="" className="aspect-[4/3] w-full rounded object-cover" />
+                )}
+                <button
+                  onClick={() => remove(img.key)}
+                  className="absolute right-1 top-1 rounded bg-black/60 px-1 text-xs text-white"
+                  aria-label={t('common.remove')}
+                >
                   ✕
                 </button>
               </div>
             ))}
           </div>
-          {previews.length < 8 && <FilePicker accept="image/*" label={t('vendor.addPreview')} onPick={(f) => upload('preview', f)} />}
+          {previews.length < 8 && (
+            <FilePicker
+              accept="image/*"
+              label={t('vendor.addPreview')}
+              onPick={(f) => upload('preview', f)}
+            />
+          )}
         </div>
-        {progress !== null && <div className="text-xs text-slate-500">{t('vendor.uploading', { pct: progress })}</div>}
+        {progress !== null && (
+          <div className="text-xs text-slate-500">{t('vendor.uploading', { pct: progress })}</div>
+        )}
       </div>
     </Card>
   );
 }
 
-function FilesPanel({ product, settings, onChange }: { product: VendorProduct; settings: PublicSettings | null; onChange: () => void }) {
+function FilesPanel({
+  product,
+  settings,
+  onChange,
+}: {
+  product: VendorProduct;
+  settings: PublicSettings | null;
+  onChange: () => void;
+}) {
   const t = useLocale().t;
   const action = useAction();
   const [progress, setProgress] = useState<number | null>(null);
 
   const upload = async (file: File) => {
     await action.run(async () => {
-      const { uploadUrl, storageKey } = await api<{ uploadUrl: string; storageKey: string }>(`/vendor/products/${product.id}/files/upload-url`, {
-        method: 'POST',
-        body: { fileName: file.name, contentType: file.type || 'application/octet-stream', sizeBytes: file.size },
-      });
+      const { uploadUrl, storageKey } = await api<{ uploadUrl: string; storageKey: string }>(
+        `/vendor/products/${product.id}/files/upload-url`,
+        {
+          method: 'POST',
+          body: {
+            fileName: file.name,
+            contentType: file.type || 'application/octet-stream',
+            sizeBytes: file.size,
+          },
+        },
+      );
       await uploadToPresignedUrl(uploadUrl, file, setProgress);
-      await api(`/vendor/products/${product.id}/files/confirm`, { method: 'POST', body: { storageKey, fileName: file.name } });
+      await api(`/vendor/products/${product.id}/files/confirm`, {
+        method: 'POST',
+        body: { storageKey, fileName: file.name },
+      });
     });
     setProgress(null);
     onChange();
   };
 
   const remove = async (fileId: string) => {
-    await action.run(() => api(`/vendor/products/${product.id}/files/${fileId}`, { method: 'DELETE' }));
+    await action.run(() =>
+      api(`/vendor/products/${product.id}/files/${fileId}`, { method: 'DELETE' }),
+    );
     onChange();
   };
 
@@ -173,24 +246,54 @@ function FilesPanel({ product, settings, onChange }: { product: VendorProduct; s
         {(product.files ?? []).map((f) => (
           <li key={f.id} className="flex items-center justify-between gap-2">
             <span className="truncate">
-              {f.fileName} <span className="text-xs text-slate-500">({formatBytes(f.sizeBytes)})</span>
-              {f.isMain && <span className="ml-1 rounded bg-brand-50 px-1 text-xs text-brand-700">{t('vendor.main')}</span>}
+              {f.fileName}{' '}
+              <span className="text-xs text-slate-500">({formatBytes(f.sizeBytes)})</span>
+              {f.isMain && (
+                <span className="ml-1 rounded bg-brand-50 px-1 text-xs text-brand-700">
+                  {t('vendor.main')}
+                </span>
+              )}
             </span>
             <Button size="sm" variant="ghost" onClick={() => remove(f.id)}>
               {t('common.remove')}
             </Button>
           </li>
         ))}
-        {(product.files ?? []).length === 0 && <li className="text-slate-500">{t('vendor.noFilesYet')}</li>}
+        {(product.files ?? []).length === 0 && (
+          <li className="text-slate-500">{t('vendor.noFilesYet')}</li>
+        )}
       </ul>
-      <FilePicker label={t('vendor.uploadFile')} onPick={upload} accept={settings?.allowedFileExtensions.map((e) => `.${e}`).join(',')} />
-      {settings && <p className="mt-2 text-xs text-slate-500">{t('vendor.allowed', { list: settings.allowedFileExtensions.join(', '), mb: settings.maxUploadMb })}</p>}
-      {progress !== null && <div className="mt-2 text-xs text-slate-500">{t('vendor.uploading', { pct: progress })}</div>}
+      <FilePicker
+        label={t('vendor.uploadFile')}
+        onPick={upload}
+        accept={settings?.allowedFileExtensions.map((e) => `.${e}`).join(',')}
+      />
+      {settings && (
+        <p className="mt-2 text-xs text-slate-500">
+          {t('vendor.allowed', {
+            list: settings.allowedFileExtensions.join(', '),
+            mb: settings.maxUploadMb,
+          })}
+        </p>
+      )}
+      {progress !== null && (
+        <div className="mt-2 text-xs text-slate-500">
+          {t('vendor.uploading', { pct: progress })}
+        </div>
+      )}
     </Card>
   );
 }
 
-function FilePicker({ label, accept, onPick }: { label: string; accept?: string; onPick: (file: File) => void }) {
+function FilePicker({
+  label,
+  accept,
+  onPick,
+}: {
+  label: string;
+  accept?: string;
+  onPick: (file: File) => void;
+}) {
   return (
     <label className="inline-flex cursor-pointer items-center rounded-full border border-slate-200 px-4 py-1.5 text-sm font-semibold text-navy-900 hover:border-brand-500 hover:text-brand-600">
       {label}

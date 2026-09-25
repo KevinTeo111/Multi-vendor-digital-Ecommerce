@@ -1,8 +1,18 @@
 'use client';
 
 import Link from 'next/link';
+import { DefinitionRow as Row } from '@/components/definition-row';
 import { BoxIcon, ChartIcon, ClockIcon, WalletIcon } from '@/components/icons';
-import { Alert, Badge, Card, LinkButton, ListRow, Loading, PageHeader, Stat } from '@/components/ui';
+import {
+  Alert,
+  Badge,
+  Card,
+  LinkButton,
+  ListRow,
+  Loading,
+  PageHeader,
+  Stat,
+} from '@/components/ui';
 import { useT } from '@/i18n/client';
 import { formatBps, formatDate, formatMoney } from '@/lib/format';
 import { useRealtimeEvent } from '@/lib/realtime';
@@ -57,18 +67,60 @@ export default function VendorOverview() {
       {v.status === 'SUSPENDED' && <Alert tone="error">{t('vendor.suspended')}</Alert>}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Stat label={t('vendor.totalSales')} value={sales.data?.total ?? 0} hint={t('vendor.netEarned', { amount: formatMoney(sales.data?.totals.netCents ?? 0) })} icon={<ChartIcon size={18} />} />
-        <Stat label={t('vendor.availableBalance')} value={formatMoney(balance.data?.availableCents ?? 0)} hint={t('vendor.readyToWithdraw')} icon={<WalletIcon size={18} />} />
-        <Stat label={t('vendor.pendingBalance')} value={formatMoney(balance.data?.pendingCents ?? 0)} hint={t('vendor.clearsAfterHold')} icon={<ClockIcon size={18} />} />
-        <Stat label={t('vendor.activeProducts')} value={`${v.usage.listedProducts}${v.usage.maxProducts !== null ? ` / ${v.usage.maxProducts}` : ''}`} hint={t('vendor.approvedPending')} icon={<BoxIcon size={18} />} />
+        <Stat
+          label={t('vendor.totalSales')}
+          value={sales.data?.total ?? 0}
+          hint={t('vendor.netEarned', { amount: formatMoney(sales.data?.totals.netCents ?? 0) })}
+          icon={<ChartIcon size={18} />}
+        />
+        <Stat
+          label={t('vendor.availableBalance')}
+          value={formatMoney(balance.data?.availableCents ?? 0)}
+          hint={t('vendor.readyToWithdraw')}
+          icon={<WalletIcon size={18} />}
+        />
+        <Stat
+          label={t('vendor.pendingBalance')}
+          value={formatMoney(balance.data?.pendingCents ?? 0)}
+          hint={t('vendor.clearsAfterHold')}
+          icon={<ClockIcon size={18} />}
+        />
+        <Stat
+          label={t('vendor.activeProducts')}
+          value={`${v.usage.listedProducts}${v.usage.maxProducts !== null ? ` / ${v.usage.maxProducts}` : ''}`}
+          hint={t('vendor.approvedPending')}
+          icon={<BoxIcon size={18} />}
+        />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
-        <Card title={t('vendor.recentOrders')} actions={<Link href="/vendor/sales" className="text-sm font-semibold text-brand-600 hover:underline">{t('common.viewAll')}</Link>} padded={false}>
+        <Card
+          title={t('vendor.recentOrders')}
+          actions={
+            <Link
+              href="/vendor/sales"
+              className="text-sm font-semibold text-brand-600 hover:underline"
+            >
+              {t('common.viewAll')}
+            </Link>
+          }
+          padded={false}
+        >
           {sales.data && sales.data.items.length > 0 ? (
             <div className="px-5 pb-2">
               {sales.data.items.map((s) => (
-                <ListRow key={s.id} href={`/vendor/sales/${s.id}`} meta={formatDate(s.order?.paidAt)} tag={<span className="font-mono">{s.order?.orderNumber}</span>} title={s.productTitle} trailing={<span className="font-semibold text-navy-900">{formatMoney(s.vendorNetCents)}</span>} />
+                <ListRow
+                  key={s.id}
+                  href={`/vendor/sales/${s.id}`}
+                  meta={formatDate(s.order?.paidAt)}
+                  tag={<span className="font-mono">{s.order?.orderNumber}</span>}
+                  title={s.productTitle}
+                  trailing={
+                    <span className="font-semibold text-navy-900">
+                      {formatMoney(s.vendorNetCents)}
+                    </span>
+                  }
+                />
               ))}
             </div>
           ) : (
@@ -76,7 +128,17 @@ export default function VendorOverview() {
           )}
         </Card>
 
-        <Card title={t('vendor.currentPlan')} actions={<Link href="/vendor/subscription" className="text-sm font-semibold text-brand-600 hover:underline">{t('vendor.manage')}</Link>}>
+        <Card
+          title={t('vendor.currentPlan')}
+          actions={
+            <Link
+              href="/vendor/subscription"
+              className="text-sm font-semibold text-brand-600 hover:underline"
+            >
+              {t('vendor.manage')}
+            </Link>
+          }
+        >
           {sub ? (
             <dl className="space-y-3 text-sm">
               <Row label={t('vendor.plan')}>
@@ -85,26 +147,21 @@ export default function VendorOverview() {
                 </span>
               </Row>
               <Row label={t('vendor.commission')}>{formatBps(sub.plan.commissionRateBps)}</Row>
-              <Row label={t('vendor.productLimit')}>{sub.plan.maxProducts ?? t('common.unlimited')}</Row>
+              <Row label={t('vendor.productLimit')}>
+                {sub.plan.maxProducts ?? t('common.unlimited')}
+              </Row>
               <Row label={t('vendor.withdrawals')}>
                 {sub.plan.withdrawalsPerWeek} {t('vendor.perWeek')}
               </Row>
-              <Row label={sub.status === 'CANCELED' ? t('vendor.accessUntil') : t('vendor.renews')}>{formatDate(sub.currentPeriodEnd)}</Row>
+              <Row label={sub.status === 'CANCELED' ? t('vendor.accessUntil') : t('vendor.renews')}>
+                {formatDate(sub.currentPeriodEnd)}
+              </Row>
             </dl>
           ) : (
             <p className="text-sm text-slate-500">{t('vendor.noPlanSelected')}</p>
           )}
         </Card>
       </div>
-    </div>
-  );
-}
-
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between gap-4">
-      <dt className="text-slate-500">{label}</dt>
-      <dd className="font-semibold text-navy-900">{children}</dd>
     </div>
   );
 }

@@ -13,7 +13,8 @@ import { StripePaymentGateway } from './gateway/stripe.gateway';
   providers: [
     {
       provide: PAYMENT_GATEWAY,
-      useFactory: () => (env.PAYMENT_GATEWAY === 'stripe' ? new StripePaymentGateway() : new MockPaymentGateway()),
+      useFactory: () =>
+        env.PAYMENT_GATEWAY === 'stripe' ? new StripePaymentGateway() : new MockPaymentGateway(),
     },
   ],
   exports: [PAYMENT_GATEWAY],

@@ -1,49 +1,21 @@
 import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
-import { Role, WithdrawalStatus } from '@prisma/client';
-import { IsEnum, IsInt, IsOptional, IsString, MaxLength, Min, MinLength, NotEquals } from 'class-validator';
+import { Role } from '@prisma/client';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { AuthUser } from '../../common/types/auth-user';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { AuditService } from '../audit/audit.service';
+import {
+  AdjustLedgerDto,
+  AdminWithdrawalsQuery,
+  ApproveWithdrawalDto,
+  EligibilityQuery,
+  MarkPaidDto,
+  RejectWithdrawalDto,
+  RequestWithdrawalDto,
+} from './dto/finance.dto';
 import { LedgerService } from './ledger.service';
 import { WithdrawalsService } from './withdrawals.service';
-
-class RequestWithdrawalDto {
-  @IsOptional() @IsInt() @Min(1)
-  amountCents?: number;
-}
-
-class EligibilityQuery {
-  @IsOptional() @IsInt() @Min(1)
-  amountCents?: number;
-}
-
-class AdminWithdrawalsQuery extends PaginationDto {
-  @IsOptional() @IsEnum(WithdrawalStatus) status?: WithdrawalStatus;
-}
-
-class ApproveWithdrawalDto {
-  @IsOptional() @IsString() @MaxLength(1000) notes?: string;
-}
-
-class MarkPaidDto {
-  /** Bank/PIX transaction reference, shown to the vendor. */
-  @IsOptional() @IsString() @MaxLength(120) reference?: string;
-  @IsOptional() @IsString() @MaxLength(1000) notes?: string;
-}
-
-class RejectWithdrawalDto {
-  @IsString() @MinLength(3) @MaxLength(1000) reason: string;
-}
-
-class AdjustLedgerDto {
-  @IsInt() @NotEquals(0)
-  amountCents: number;
-
-  @IsString() @MinLength(3) @MaxLength(500)
-  description: string;
-}
 
 @Controller('vendor/finance')
 @Roles(Role.VENDOR)
@@ -99,7 +71,11 @@ export class AdminFinanceController {
   }
 
   @Post('withdrawals/:id/approve')
-  approve(@Param('id') id: string, @Body() dto: ApproveWithdrawalDto, @CurrentUser('id') adminId: string) {
+  approve(
+    @Param('id') id: string,
+    @Body() dto: ApproveWithdrawalDto,
+    @CurrentUser('id') adminId: string,
+  ) {
     return this.withdrawals.approve(id, adminId, dto.notes);
   }
 
@@ -109,7 +85,11 @@ export class AdminFinanceController {
   }
 
   @Post('withdrawals/:id/reject')
-  reject(@Param('id') id: string, @Body() dto: RejectWithdrawalDto, @CurrentUser('id') adminId: string) {
+  reject(
+    @Param('id') id: string,
+    @Body() dto: RejectWithdrawalDto,
+    @CurrentUser('id') adminId: string,
+  ) {
     return this.withdrawals.reject(id, adminId, dto.reason);
   }
 
@@ -124,7 +104,11 @@ export class AdminFinanceController {
   }
 
   @Post('vendors/:vendorId/ledger/adjust')
-  async adjust(@Param('vendorId') vendorId: string, @Body() dto: AdjustLedgerDto, @CurrentUser('id') adminId: string) {
+  async adjust(
+    @Param('vendorId') vendorId: string,
+    @Body() dto: AdjustLedgerDto,
+    @CurrentUser('id') adminId: string,
+  ) {
     const entry = await this.ledger.adjust(vendorId, dto.amountCents, dto.description);
     await this.audit.log({
       actorId: adminId,

@@ -3,16 +3,20 @@ import { Role } from '@prisma/client';
 import type { Request } from 'express';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { CheckoutService } from './checkout.service';
 import { AdminOrdersQuery, BuyerOrdersQuery, VendorSalesQuery } from './dto/order.dto';
 import { OrdersService } from './orders.service';
 
 @Controller()
 export class OrdersController {
-  constructor(private readonly orders: OrdersService) {}
+  constructor(
+    private readonly orders: OrdersService,
+    private readonly checkoutService: CheckoutService,
+  ) {}
 
   @Post('checkout')
   checkout(@CurrentUser('id') userId: string) {
-    return this.orders.checkout(userId);
+    return this.checkoutService.checkout(userId);
   }
 
   @Get('orders')
@@ -31,8 +35,15 @@ export class OrdersController {
   }
 
   @Get('orders/items/:itemId/download')
-  download(@CurrentUser('id') userId: string, @Param('itemId') itemId: string, @Req() req: Request) {
-    return this.orders.downloadUrl(userId, itemId, undefined, { ip: req.ip, userAgent: req.headers['user-agent'] });
+  download(
+    @CurrentUser('id') userId: string,
+    @Param('itemId') itemId: string,
+    @Req() req: Request,
+  ) {
+    return this.orders.downloadUrl(userId, itemId, undefined, {
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
   }
 
   @Get('orders/items/:itemId/files/:fileId/download')
@@ -42,7 +53,10 @@ export class OrdersController {
     @Param('fileId') fileId: string,
     @Req() req: Request,
   ) {
-    return this.orders.downloadUrl(userId, itemId, fileId, { ip: req.ip, userAgent: req.headers['user-agent'] });
+    return this.orders.downloadUrl(userId, itemId, fileId, {
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+    });
   }
 }
 

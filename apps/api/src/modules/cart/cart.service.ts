@@ -35,7 +35,9 @@ export class CartService {
 
     // Drop items that went offline since they were added.
     const purchasable = cart.items.filter(
-      (i) => i.product.status === ProductStatus.APPROVED && i.product.vendor.status === VendorStatus.ACTIVE,
+      (i) =>
+        i.product.status === ProductStatus.APPROVED &&
+        i.product.vendor.status === VendorStatus.ACTIVE,
     );
     const stale = cart.items.filter((i) => !purchasable.includes(i));
     if (stale.length) {
@@ -43,10 +45,10 @@ export class CartService {
     }
 
     const items = await Promise.all(
-      purchasable.map(async ({ product, ...item }) => {
-        const { thumbnailKey, ...p } = product;
-        return { ...item, product: { ...p, thumbnailUrl: await this.storage.createMediaUrl(thumbnailKey) } };
-      }),
+      purchasable.map(async ({ product, ...item }) => ({
+        ...item,
+        product: await this.storage.withThumbnail(product),
+      })),
     );
     const subtotalCents = items.reduce((sum, i) => sum + i.product.priceCents, 0);
     return { id: cart.id, items, subtotalCents, removedUnavailable: stale.length };
@@ -57,7 +59,11 @@ export class CartService {
       where: { id: productId },
       select: { id: true, status: true, vendor: { select: { userId: true, status: true } } },
     });
-    if (!product || product.status !== ProductStatus.APPROVED || product.vendor.status !== VendorStatus.ACTIVE) {
+    if (
+      !product ||
+      product.status !== ProductStatus.APPROVED ||
+      product.vendor.status !== VendorStatus.ACTIVE
+    ) {
       throw new NotFoundException('Product is not available');
     }
     if (product.vendor.userId === userId) {
@@ -70,7 +76,11 @@ export class CartService {
     });
     if (alreadyOwned) throw new BadRequestException('You already own this product');
 
-    const cart = await this.prisma.cart.upsert({ where: { userId }, create: { userId }, update: {} });
+    const cart = await this.prisma.cart.upsert({
+      where: { userId },
+      create: { userId },
+      update: {},
+    });
     await this.prisma.cartItem.upsert({
       where: { cartId_productId: { cartId: cart.id, productId } },
       create: { cartId: cart.id, productId },

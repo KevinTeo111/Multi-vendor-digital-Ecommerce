@@ -150,7 +150,10 @@ function extractMessage(data: unknown): string | null {
 // Server-side fetch (public endpoints only; no cookies/tokens involved)
 // ---------------------------------------------------------------------------
 
-export async function serverApi<T>(path: string, query?: RequestOptions['query']): Promise<T | null> {
+export async function serverApi<T>(
+  path: string,
+  query?: RequestOptions['query'],
+): Promise<T | null> {
   const base = normalizeBase(process.env.API_URL, API_URL);
   const url = `${base}/api${path}${buildQuery(query)}`;
   try {
@@ -169,7 +172,11 @@ export async function serverApi<T>(path: string, query?: RequestOptions['query']
 }
 
 /** Uploads a file straight to object storage using a presigned URL. */
-export async function uploadToPresignedUrl(uploadUrl: string, file: File, onProgress?: (pct: number) => void) {
+export async function uploadToPresignedUrl(
+  uploadUrl: string,
+  file: File,
+  onProgress?: (pct: number) => void,
+) {
   return new Promise<void>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('PUT', uploadUrl);
@@ -177,7 +184,10 @@ export async function uploadToPresignedUrl(uploadUrl: string, file: File, onProg
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
     };
-    xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`Upload failed (${xhr.status})`)));
+    xhr.onload = () =>
+      xhr.status >= 200 && xhr.status < 300
+        ? resolve()
+        : reject(new Error(`Upload failed (${xhr.status})`));
     xhr.onerror = () => reject(new Error('Upload failed'));
     xhr.send(file);
   });

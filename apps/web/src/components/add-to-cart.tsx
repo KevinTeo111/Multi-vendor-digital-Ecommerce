@@ -20,7 +20,9 @@ export function AddToCart({ productId, title }: { productId: string; title: stri
   const toast = useToast();
   const t = useT();
   const router = useRouter();
-  const [state, setState] = useState<{ loading: boolean; error?: string; done?: boolean }>({ loading: false });
+  const [state, setState] = useState<{ loading: boolean; error?: string; done?: boolean }>({
+    loading: false,
+  });
 
   const add = async () => {
     if (!user) {
@@ -29,12 +31,21 @@ export function AddToCart({ productId, title }: { productId: string; title: stri
     }
     setState({ loading: true });
     try {
-      const cart = await api<{ items: unknown[] }>('/cart/items', { method: 'POST', body: { productId } });
+      const cart = await api<{ items: unknown[] }>('/cart/items', {
+        method: 'POST',
+        body: { productId },
+      });
       setCount(cart.items.length);
       setState({ loading: false, done: true });
-      toast.push(t('toast.addedToCart', { title }), { tone: 'success', action: { label: t('product.viewCart'), href: '/cart' } });
+      toast.push(t('toast.addedToCart', { title }), {
+        tone: 'success',
+        action: { label: t('product.viewCart'), href: '/cart' },
+      });
     } catch (err) {
-      setState({ loading: false, error: err instanceof ApiError ? err.message : 'Could not add to cart' });
+      setState({
+        loading: false,
+        error: err instanceof ApiError ? err.message : 'Could not add to cart',
+      });
       void refresh();
     }
   };

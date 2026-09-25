@@ -36,3 +36,21 @@ export function paginate<T>(items: T[], total: number, dto: PaginationDto): Pagi
     totalPages: Math.max(1, Math.ceil(total / dto.pageSize)),
   };
 }
+
+/** Runs the page query and the count concurrently and wraps the result. */
+export async function findPage<T>(
+  dto: PaginationDto,
+  list: () => Promise<T[]>,
+  count: () => Promise<number>,
+): Promise<Paginated<T>> {
+  const [items, total] = await Promise.all([list(), count()]);
+  return paginate(items, total, dto);
+}
+
+/** Transforms every item of a page (for example to attach signed media URLs). */
+export async function mapPage<T, U>(
+  page: Paginated<T>,
+  fn: (item: T) => Promise<U> | U,
+): Promise<Paginated<U>> {
+  return { ...page, items: await Promise.all(page.items.map(fn)) };
+}

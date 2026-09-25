@@ -17,7 +17,11 @@ export function formatBps(bps: number) {
   return `${(bps / 100).toFixed(bps % 100 === 0 ? 0 : 2)}%`;
 }
 
-export function formatDate(value: string | Date | null | undefined, withTime = false, locale = defaultLocale) {
+export function formatDate(
+  value: string | Date | null | undefined,
+  withTime = false,
+  locale = defaultLocale,
+) {
   if (!value) return '—';
   const d = typeof value === 'string' ? new Date(value) : value;
   return d.toLocaleString(locale, {
@@ -37,8 +41,4 @@ export function formatBytes(bytes: number) {
     i++;
   }
   return `${v.toFixed(v < 10 ? 1 : 0)} ${units[i]}`;
-}
-
-export function statusLabel(status: string) {
-  return status.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 }

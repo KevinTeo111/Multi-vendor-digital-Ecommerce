@@ -26,10 +26,20 @@ function OrderView() {
 
   return (
     <div>
-      <PageHeader title={t('orders.orderTitle', { number: o.orderNumber })} description={t('orders.placed', { date: formatDate(o.createdAt, true) })} actions={<Badge status={o.status} />} />
+      <PageHeader
+        title={t('orders.orderTitle', { number: o.orderNumber })}
+        description={t('orders.placed', { date: formatDate(o.createdAt, true) })}
+        actions={<Badge status={o.status} />}
+      />
 
       {o.status === 'PENDING' && <Alert tone="info">{t('orders.pending')}</Alert>}
-      {o.status === 'FAILED' && <Alert tone="error">{o.failureReason ? t('orders.failedReason', { reason: o.failureReason }) : t('orders.failed')}</Alert>}
+      {o.status === 'FAILED' && (
+        <Alert tone="error">
+          {o.failureReason
+            ? t('orders.failedReason', { reason: o.failureReason })
+            : t('orders.failed')}
+        </Alert>
+      )}
       {o.status === 'PAID' && <Alert tone="success">{t('orders.confirmed')}</Alert>}
 
       <Card className="mt-4">
@@ -37,7 +47,10 @@ function OrderView() {
           {o.items.map((item) => (
             <li key={item.id} className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center">
               <div className="min-w-0 flex-1">
-                <Link href={`/products/${item.product.slug}`} className="font-medium text-navy-900 hover:text-brand-600">
+                <Link
+                  href={`/products/${item.product.slug}`}
+                  className="font-medium text-navy-900 hover:text-brand-600"
+                >
                   {item.productTitle}
                 </Link>
                 <div className="text-xs text-slate-500">

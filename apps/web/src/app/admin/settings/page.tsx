@@ -28,15 +28,35 @@ export default function AdminSettingsPage() {
       title: t('admin.groupSite'),
       fields: [
         { key: 'site.name', label: t('admin.siteName'), kind: 'text' },
-        { key: 'site.currency', label: t('admin.currency'), kind: 'text', hint: t('admin.currencyHint') },
+        {
+          key: 'site.currency',
+          label: t('admin.currency'),
+          kind: 'text',
+          hint: t('admin.currencyHint'),
+        },
       ],
     },
     {
       title: t('admin.groupFinance'),
       fields: [
-        { key: 'finance.min_withdrawal_cents', label: t('admin.minWithdrawal'), kind: 'money', hint: t('admin.minWithdrawalHint') },
-        { key: 'finance.pending_hold_days', label: t('admin.holdDays'), kind: 'int', hint: t('admin.holdDaysHint') },
-        { key: 'finance.default_commission_bps', label: t('admin.defaultCommission'), kind: 'percent', hint: t('admin.defaultCommissionHint') },
+        {
+          key: 'finance.min_withdrawal_cents',
+          label: t('admin.minWithdrawal'),
+          kind: 'money',
+          hint: t('admin.minWithdrawalHint'),
+        },
+        {
+          key: 'finance.pending_hold_days',
+          label: t('admin.holdDays'),
+          kind: 'int',
+          hint: t('admin.holdDaysHint'),
+        },
+        {
+          key: 'finance.default_commission_bps',
+          label: t('admin.defaultCommission'),
+          kind: 'percent',
+          hint: t('admin.defaultCommissionHint'),
+        },
         {
           key: 'finance.payout_mode',
           label: t('admin.payoutMode'),
@@ -53,7 +73,12 @@ export default function AdminSettingsPage() {
       title: t('admin.groupProducts'),
       fields: [
         { key: 'products.max_upload_mb', label: t('admin.maxUpload'), kind: 'int' },
-        { key: 'products.allowed_file_extensions', label: t('admin.allowedExtensions'), kind: 'list', hint: t('admin.allowedExtensionsHint') },
+        {
+          key: 'products.allowed_file_extensions',
+          label: t('admin.allowedExtensions'),
+          kind: 'list',
+          hint: t('admin.allowedExtensionsHint'),
+        },
       ],
     },
   ];
@@ -64,7 +89,14 @@ export default function AdminSettingsPage() {
     const next: Record<string, string> = {};
     for (const f of FIELDS) {
       const v = settings.data[f.key];
-      next[f.key] = f.kind === 'money' ? ((v as number) / 100).toFixed(2) : f.kind === 'percent' ? ((v as number) / 100).toString() : f.kind === 'list' ? (v as string[]).join(', ') : String(v ?? '');
+      next[f.key] =
+        f.kind === 'money'
+          ? ((v as number) / 100).toFixed(2)
+          : f.kind === 'percent'
+            ? ((v as number) / 100).toString()
+            : f.kind === 'list'
+              ? (v as string[]).join(', ')
+              : String(v ?? '');
     }
     setForm(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -77,11 +109,18 @@ export default function AdminSettingsPage() {
     for (const f of FIELDS) {
       const raw = form[f.key] ?? '';
       body[f.key] =
-        f.kind === 'money' ? Math.round(Number(raw) * 100)
-        : f.kind === 'percent' ? Math.round(Number(raw) * 100)
-        : f.kind === 'int' ? Number(raw)
-        : f.kind === 'list' ? raw.split(',').map((s) => s.trim().toLowerCase().replace(/^\./, '')).filter(Boolean)
-        : raw;
+        f.kind === 'money'
+          ? Math.round(Number(raw) * 100)
+          : f.kind === 'percent'
+            ? Math.round(Number(raw) * 100)
+            : f.kind === 'int'
+              ? Number(raw)
+              : f.kind === 'list'
+                ? raw
+                    .split(',')
+                    .map((s) => s.trim().toLowerCase().replace(/^\./, ''))
+                    .filter(Boolean)
+                : raw;
     }
     const ok = await action.run(() => api('/admin/settings', { method: 'PUT', body }));
     if (ok !== undefined) {
@@ -104,7 +143,10 @@ export default function AdminSettingsPage() {
               {group.fields.map((f) => (
                 <Field key={f.key} label={f.label} hint={f.hint}>
                   {f.kind === 'select' ? (
-                    <Select value={form[f.key] ?? ''} onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}>
+                    <Select
+                      value={form[f.key] ?? ''}
+                      onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
+                    >
                       {f.options?.map((o) => (
                         <option key={o.value} value={o.value}>
                           {o.label}

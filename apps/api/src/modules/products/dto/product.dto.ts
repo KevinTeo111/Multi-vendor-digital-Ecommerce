@@ -17,65 +17,104 @@ import {
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 
 export class CreateProductDto {
-  @IsString() @MinLength(3) @MaxLength(140)
+  @IsString()
+  @MinLength(3)
+  @MaxLength(140)
   title: string;
 
   @IsString()
   categoryId: string;
 
-  @IsString() @MinLength(10) @MaxLength(300)
+  @IsString()
+  @MinLength(10)
+  @MaxLength(300)
   shortDescription: string;
 
-  @IsString() @MinLength(20) @MaxLength(20_000)
+  @IsString()
+  @MinLength(20)
+  @MaxLength(20_000)
   description: string;
 
-  @IsInt() @Min(0) @Max(100_000_000)
+  @IsInt()
+  @Min(0)
+  @Max(100_000_000)
   priceCents: number;
 
-  @IsOptional() @IsUrl({ require_tld: false })
+  @IsOptional()
+  @IsUrl({ require_tld: false })
   demoUrl?: string;
 
-  @IsOptional() @IsString() @MaxLength(40)
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
   version?: string;
 
-  @IsOptional() @IsArray() @ArrayMaxSize(15) @IsString({ each: true }) @MaxLength(30, { each: true })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(15)
+  @IsString({ each: true })
+  @MaxLength(30, { each: true })
   tags?: string[];
 }
 
 export class UpdateProductDto {
-  @IsOptional() @IsString() @MinLength(3) @MaxLength(140)
+  @IsOptional()
+  @IsString()
+  @MinLength(3)
+  @MaxLength(140)
   title?: string;
 
-  @IsOptional() @IsString()
+  @IsOptional()
+  @IsString()
   categoryId?: string;
 
-  @IsOptional() @IsString() @MinLength(10) @MaxLength(300)
+  @IsOptional()
+  @IsString()
+  @MinLength(10)
+  @MaxLength(300)
   shortDescription?: string;
 
-  @IsOptional() @IsString() @MinLength(20) @MaxLength(20_000)
+  @IsOptional()
+  @IsString()
+  @MinLength(20)
+  @MaxLength(20_000)
   description?: string;
 
-  @IsOptional() @IsInt() @Min(0) @Max(100_000_000)
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100_000_000)
   priceCents?: number;
 
-  @IsOptional() @IsUrl({ require_tld: false })
+  @IsOptional()
+  @IsUrl({ require_tld: false })
   demoUrl?: string | null;
 
-  @IsOptional() @IsString() @MaxLength(40)
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
   version?: string | null;
 
-  @IsOptional() @IsArray() @ArrayMaxSize(15) @IsString({ each: true }) @MaxLength(30, { each: true })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(15)
+  @IsString({ each: true })
+  @MaxLength(30, { each: true })
   tags?: string[];
 }
 
 export class RequestUploadDto {
-  @IsString() @MinLength(1) @MaxLength(200)
+  @IsString()
+  @MinLength(1)
+  @MaxLength(200)
   fileName: string;
 
-  @IsString() @MaxLength(120)
+  @IsString()
+  @MaxLength(120)
   contentType: string;
 
-  @IsInt() @Min(1)
+  @IsInt()
+  @Min(1)
   sizeBytes: number;
 }
 
@@ -83,15 +122,20 @@ export class ConfirmFileDto {
   @IsString()
   storageKey: string;
 
-  @IsString() @MinLength(1) @MaxLength(200)
+  @IsString()
+  @MinLength(1)
+  @MaxLength(200)
   fileName: string;
 
-  @IsOptional() @IsBoolean()
+  @IsOptional()
+  @IsBoolean()
   isMain?: boolean;
 }
 
 export class RequestImageUploadDto {
-  @IsString() @MinLength(1) @MaxLength(200)
+  @IsString()
+  @MinLength(1)
+  @MaxLength(200)
   fileName: string;
 
   @IsIn(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
@@ -114,8 +158,14 @@ export class RemoveImageDto {
   storageKey: string;
 }
 
+export class BlockProductDto {
+  @IsOptional() @IsString() @MaxLength(1000) reason?: string;
+}
+
 export class RejectProductDto {
-  @IsString() @MinLength(3) @MaxLength(1000)
+  @IsString()
+  @MinLength(3)
+  @MaxLength(1000)
   reason: string;
 }
 
@@ -134,7 +184,8 @@ export class PublicProductsQuery extends PaginationDto {
   @IsOptional() @IsString() @MaxLength(100) search?: string;
   @IsOptional() @IsString() category?: string; // category slug
   @IsOptional() @IsString() vendor?: string; // vendor slug
-  @IsOptional() @IsIn(['newest', 'popular', 'price_asc', 'price_desc']) sort?: 'newest' | 'popular' | 'price_asc' | 'price_desc';
+  @IsOptional() @IsIn(['newest', 'popular', 'price_asc', 'price_desc']) sort?:
+    'newest' | 'popular' | 'price_asc' | 'price_desc';
   @IsOptional() @IsInt() @Min(0) minPriceCents?: number;
   @IsOptional() @IsInt() @Min(0) maxPriceCents?: number;
 }

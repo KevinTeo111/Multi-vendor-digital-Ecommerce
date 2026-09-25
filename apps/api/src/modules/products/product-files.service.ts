@@ -5,7 +5,12 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { StorageService } from '../storage/storage.service';
 import { ProductsService } from './products.service';
-import { ConfirmFileDto, ConfirmImageDto, RequestImageUploadDto, RequestUploadDto } from './dto/product.dto';
+import {
+  ConfirmFileDto,
+  ConfirmImageDto,
+  RequestImageUploadDto,
+  RequestUploadDto,
+} from './dto/product.dto';
 
 const MAX_PREVIEW_IMAGES = 8;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -36,7 +41,9 @@ export class ProductFilesService {
     ]);
     const ext = extname(dto.fileName).replace('.', '').toLowerCase();
     if (!ext || !allowedExt.includes(ext)) {
-      throw new BadRequestException(`File type .${ext || '?'} is not allowed. Allowed: ${allowedExt.join(', ')}`);
+      throw new BadRequestException(
+        `File type .${ext || '?'} is not allowed. Allowed: ${allowedExt.join(', ')}`,
+      );
     }
     if (dto.sizeBytes > maxMb * 1024 * 1024) {
       throw new BadRequestException(`File exceeds the maximum size of ${maxMb} MB`);
@@ -51,7 +58,8 @@ export class ProductFilesService {
     this.assertKeyBelongs(dto.storageKey, vendorId, productId, 'files');
 
     const info = await this.storage.headObject(dto.storageKey);
-    if (!info) throw new BadRequestException('Upload not found in storage; please upload the file first');
+    if (!info)
+      throw new BadRequestException('Upload not found in storage; please upload the file first');
 
     const maxMb = await this.settings.get(SETTING_KEYS.MAX_UPLOAD_MB);
     if (info.sizeBytes > maxMb * 1024 * 1024) {
@@ -87,7 +95,9 @@ export class ProductFilesService {
     const sold = await this.prisma.orderItem.count({ where: { productId } });
     const remaining = await this.prisma.productFile.count({ where: { productId } });
     if (sold > 0 && remaining <= 1) {
-      throw new BadRequestException('A product with sales must keep at least one downloadable file');
+      throw new BadRequestException(
+        'A product with sales must keep at least one downloadable file',
+      );
     }
 
     await this.prisma.productFile.delete({ where: { id: fileId } });
@@ -136,7 +146,9 @@ export class ProductFilesService {
       data: { previewImageKeys: { push: dto.storageKey } },
     });
     return {
-      previewImageUrls: await Promise.all(updated.previewImageKeys.map((k) => this.storage.createMediaUrl(k))),
+      previewImageUrls: await Promise.all(
+        updated.previewImageKeys.map((k) => this.storage.createMediaUrl(k)),
+      ),
     };
   }
 
@@ -157,7 +169,12 @@ export class ProductFilesService {
   }
 
   /** Guards against a vendor confirming a key that belongs to someone else's product. */
-  private assertKeyBelongs(key: string, vendorId: string, productId: string, kind: 'files' | 'images') {
+  private assertKeyBelongs(
+    key: string,
+    vendorId: string,
+    productId: string,
+    kind: 'files' | 'images',
+  ) {
     const prefix = `vendors/${vendorId}/products/${productId}/${kind}/`;
     if (!key.startsWith(prefix) || key.includes('..')) {
       throw new BadRequestException('Invalid storage key for this product');

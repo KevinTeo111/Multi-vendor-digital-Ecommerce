@@ -1,19 +1,10 @@
 import { Body, Controller, Delete, Get, Post, Query } from '@nestjs/common';
 import { Role } from '@prisma/client';
-import { IsOptional, IsString } from 'class-validator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { AuthUser } from '../../common/types/auth-user';
+import { AdminSubscriptionsQuery, SubscribeDto } from './dto/subscription.dto';
 import { SubscriptionsService } from './subscriptions.service';
-
-class SubscribeDto {
-  @IsString()
-  planId: string;
-}
-
-class AdminListQuery {
-  @IsOptional() @IsString() vendorId?: string;
-}
 
 @Controller('vendor/subscription')
 @Roles(Role.VENDOR)
@@ -42,7 +33,7 @@ export class AdminSubscriptionsController {
   constructor(private readonly subscriptions: SubscriptionsService) {}
 
   @Get()
-  list(@Query() query: AdminListQuery) {
+  list(@Query() query: AdminSubscriptionsQuery) {
     return this.subscriptions.listForAdmin(query.vendorId);
   }
 }

@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, ProductStatus, SubscriptionStatus, VendorStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import { paginate } from '../../common/dto/pagination.dto';
+import { findPage, mapPage } from '../../common/dto/pagination.dto';
 import { ListVendorsQuery, UpdateVendorProfileDto } from './dto/vendor.dto';
 
 const vendorPublicSelect = {
@@ -25,7 +25,15 @@ export class VendorsService {
       include: {
         user: { select: { id: true, email: true, name: true } },
         subscriptions: {
-          where: { status: { in: [SubscriptionStatus.ACTIVE, SubscriptionStatus.PAST_DUE, SubscriptionStatus.PENDING] } },
+          where: {
+            status: {
+              in: [
+                SubscriptionStatus.ACTIVE,
+                SubscriptionStatus.PAST_DUE,
+                SubscriptionStatus.PENDING,
+              ],
+            },
+          },
           include: { plan: true },
           orderBy: { createdAt: 'desc' },
           take: 1,
@@ -93,34 +101,31 @@ export class VendorsService {
         : {}),
     };
 
-    const [items, total] = await this.prisma.$transaction([
-      this.prisma.vendor.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        skip: query.skip,
-        take: query.pageSize,
-        include: {
-          user: { select: { id: true, email: true, name: true, status: true } },
-          subscriptions: {
-            where: { status: SubscriptionStatus.ACTIVE },
-            include: { plan: { select: { id: true, name: true } } },
-            take: 1,
-          },
-          _count: { select: { products: true } },
-        },
-      }),
-      this.prisma.vendor.count({ where }),
-    ]);
-
-    return paginate(
-      items.map(({ subscriptions, _count, ...v }) => ({
-        ...v,
-        activePlan: subscriptions[0]?.plan ?? null,
-        productCount: _count.products,
-      })),
-      total,
+    const page = await findPage(
       query,
+      () =>
+        this.prisma.vendor.findMany({
+          where,
+          orderBy: { createdAt: 'desc' },
+          skip: query.skip,
+          take: query.pageSize,
+          include: {
+            user: { select: { id: true, email: true, name: true, status: true } },
+            subscriptions: {
+              where: { status: SubscriptionStatus.ACTIVE },
+              include: { plan: { select: { id: true, name: true } } },
+              take: 1,
+            },
+            _count: { select: { products: true } },
+          },
+        }),
+      () => this.prisma.vendor.count({ where }),
     );
+    return mapPage(page, ({ subscriptions, _count, ...v }) => ({
+      ...v,
+      activePlan: subscriptions[0]?.plan ?? null,
+      productCount: _count.products,
+    }));
   }
 
   async getForAdmin(id: string) {

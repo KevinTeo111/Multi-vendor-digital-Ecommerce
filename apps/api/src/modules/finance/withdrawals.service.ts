@@ -1,10 +1,4 @@
-import {
-  BadRequestException,
-  Inject,
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import {
   LedgerEntryStatus,
   LedgerEntryType,
@@ -14,7 +8,7 @@ import {
 } from '@prisma/client';
 import { SETTING_KEYS } from '@marketplace/shared';
 import { PrismaService } from '../../prisma/prisma.service';
-import { PaginationDto, paginate } from '../../common/dto/pagination.dto';
+import { PaginationDto, findPage } from '../../common/dto/pagination.dto';
 import { AuditService } from '../audit/audit.service';
 import { PAYMENT_GATEWAY, PaymentGateway } from '../payments/gateway/payment-gateway.interface';
 import { RealtimeService } from '../realtime/realtime.service';
@@ -24,7 +18,11 @@ import { LedgerService } from './ledger.service';
 import { evaluateWithdrawal, WEEK_MS, WithdrawalRuleInput } from './withdrawal-rules';
 
 const OPEN_STATUSES: WithdrawalStatus[] = [WithdrawalStatus.REQUESTED, WithdrawalStatus.APPROVED];
-const COUNTED_STATUSES: WithdrawalStatus[] = [WithdrawalStatus.REQUESTED, WithdrawalStatus.APPROVED, WithdrawalStatus.PAID];
+const COUNTED_STATUSES: WithdrawalStatus[] = [
+  WithdrawalStatus.REQUESTED,
+  WithdrawalStatus.APPROVED,
+  WithdrawalStatus.PAID,
+];
 
 @Injectable()
 export class WithdrawalsService {
@@ -40,7 +38,14 @@ export class WithdrawalsService {
     @Inject(PAYMENT_GATEWAY) private readonly gateway: PaymentGateway,
   ) {}
 
-  private notify(w: { id: string; vendorId: string; status: WithdrawalStatus; amountCents: number; rejectionReason?: string | null; adminNotes?: string | null }) {
+  private notify(w: {
+    id: string;
+    vendorId: string;
+    status: WithdrawalStatus;
+    amountCents: number;
+    rejectionReason?: string | null;
+    adminNotes?: string | null;
+  }) {
     this.realtime.toVendor(w.vendorId, 'withdrawal.status', {
       withdrawalId: w.id,
       status: w.status,
@@ -103,41 +108,56 @@ export class WithdrawalsService {
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
     );
-    this.realtime.toAdmins('withdrawal.requested', { withdrawalId: withdrawal.id, vendorId, amountCents: withdrawal.amountCents });
+    this.realtime.toAdmins('withdrawal.requested', {
+      withdrawalId: withdrawal.id,
+      vendorId,
+      amountCents: withdrawal.amountCents,
+    });
     return withdrawal;
   }
 
-  async listForVendor(vendorId: string, dto: PaginationDto) {
-    const [items, total] = await this.prisma.$transaction([
-      this.prisma.withdrawal.findMany({
-        where: { vendorId },
-        orderBy: { requestedAt: 'desc' },
-        skip: dto.skip,
-        take: dto.pageSize,
-      }),
-      this.prisma.withdrawal.count({ where: { vendorId } }),
-    ]);
-    return paginate(items, total, dto);
+  listForVendor(vendorId: string, dto: PaginationDto) {
+    return findPage(
+      dto,
+      () =>
+        this.prisma.withdrawal.findMany({
+          where: { vendorId },
+          orderBy: { requestedAt: 'desc' },
+          skip: dto.skip,
+          take: dto.pageSize,
+        }),
+      () => this.prisma.withdrawal.count({ where: { vendorId } }),
+    );
   }
 
   // ---- Admin -------------------------------------------------------------
 
-  async listForAdmin(dto: PaginationDto, status?: WithdrawalStatus) {
+  listForAdmin(dto: PaginationDto, status?: WithdrawalStatus) {
     const where: Prisma.WithdrawalWhereInput = { status };
-    const [items, total] = await this.prisma.$transaction([
-      this.prisma.withdrawal.findMany({
-        where,
-        orderBy: status === WithdrawalStatus.REQUESTED ? { requestedAt: 'asc' } : { updatedAt: 'desc' },
-        skip: dto.skip,
-        take: dto.pageSize,
-        include: {
-          vendor: { select: { id: true, storeName: true, slug: true, payoutDetails: true, gatewayRecipientId: true } },
-          reviewedBy: { select: { id: true, name: true } },
-        },
-      }),
-      this.prisma.withdrawal.count({ where }),
-    ]);
-    return paginate(items, total, dto);
+    return findPage(
+      dto,
+      () =>
+        this.prisma.withdrawal.findMany({
+          where,
+          orderBy:
+            status === WithdrawalStatus.REQUESTED ? { requestedAt: 'asc' } : { updatedAt: 'desc' },
+          skip: dto.skip,
+          take: dto.pageSize,
+          include: {
+            vendor: {
+              select: {
+                id: true,
+                storeName: true,
+                slug: true,
+                payoutDetails: true,
+                gatewayRecipientId: true,
+              },
+            },
+            reviewedBy: { select: { id: true, name: true } },
+          },
+        }),
+      () => this.prisma.withdrawal.count({ where }),
+    );
   }
 
   /**
@@ -162,12 +182,19 @@ export class WithdrawalsService {
 
     const payoutMode = await this.settings.get(SETTING_KEYS.PAYOUT_MODE);
     if (payoutMode === 'gateway' && !this.gateway.supportsPayouts) {
-      throw new BadRequestException('Automated payouts are not available with the current payment provider. Switch the payout mode to manual in Settings.');
+      throw new BadRequestException(
+        'Automated payouts are not available with the current payment provider. Switch the payout mode to manual in Settings.',
+      );
     }
     if (payoutMode === 'manual') {
       const updated = await this.prisma.withdrawal.update({
         where: { id },
-        data: { status: WithdrawalStatus.APPROVED, reviewedAt: new Date(), reviewedById: adminId, adminNotes: notes },
+        data: {
+          status: WithdrawalStatus.APPROVED,
+          reviewedAt: new Date(),
+          reviewedById: adminId,
+          adminNotes: notes,
+        },
       });
       await this.audit.log({
         actorId: adminId,
@@ -198,12 +225,21 @@ export class WithdrawalsService {
     // Mark approved before calling the gateway so a crash mid-transfer never re-pays.
     await this.prisma.withdrawal.update({
       where: { id },
-      data: { status: WithdrawalStatus.APPROVED, reviewedAt: new Date(), reviewedById: adminId, adminNotes: notes },
+      data: {
+        status: WithdrawalStatus.APPROVED,
+        reviewedAt: new Date(),
+        reviewedById: adminId,
+        adminNotes: notes,
+      },
     });
 
     let transfer;
     try {
-      transfer = await this.gateway.createTransfer({ withdrawalId: id, recipientId, amountCents: withdrawal.amountCents });
+      transfer = await this.gateway.createTransfer({
+        withdrawalId: id,
+        recipientId,
+        amountCents: withdrawal.amountCents,
+      });
     } catch (err) {
       this.logger.error(`Transfer failed for withdrawal ${id}: ${(err as Error).message}`);
       return this.markFailed(id, (err as Error).message);
@@ -213,10 +249,13 @@ export class WithdrawalsService {
       where: { id },
       data: {
         gatewayTransferId: transfer.gatewayTransferId,
-        ...(transfer.status === 'paid' ? { status: WithdrawalStatus.PAID, paidAt: new Date() } : {}),
+        ...(transfer.status === 'paid'
+          ? { status: WithdrawalStatus.PAID, paidAt: new Date() }
+          : {}),
       },
     });
-    if (transfer.status === 'failed') return this.markFailed(id, 'Gateway reported the transfer as failed');
+    if (transfer.status === 'failed')
+      return this.markFailed(id, 'Gateway reported the transfer as failed');
 
     await this.audit.log({
       actorId: adminId,
@@ -238,7 +277,9 @@ export class WithdrawalsService {
     if (!withdrawal) throw new NotFoundException('Withdrawal not found');
     const allowed: WithdrawalStatus[] = [WithdrawalStatus.REQUESTED, WithdrawalStatus.APPROVED];
     if (!allowed.includes(withdrawal.status)) {
-      throw new BadRequestException(`Withdrawals in status ${withdrawal.status} cannot be marked as paid`);
+      throw new BadRequestException(
+        `Withdrawals in status ${withdrawal.status} cannot be marked as paid`,
+      );
     }
 
     const updated = await this.prisma.withdrawal.update({
@@ -264,26 +305,45 @@ export class WithdrawalsService {
   }
 
   async reject(id: string, adminId: string, reason: string) {
-    return this.prisma.$transaction(async (tx) => {
-      const withdrawal = await tx.withdrawal.findUnique({ where: { id } });
-      if (!withdrawal) throw new NotFoundException('Withdrawal not found');
-      if (withdrawal.status !== WithdrawalStatus.REQUESTED) {
-        throw new BadRequestException('Only requested withdrawals can be rejected');
-      }
-      const updated = await tx.withdrawal.update({
-        where: { id },
-        data: { status: WithdrawalStatus.REJECTED, reviewedAt: new Date(), reviewedById: adminId, rejectionReason: reason },
+    return this.prisma
+      .$transaction(async (tx) => {
+        const withdrawal = await tx.withdrawal.findUnique({ where: { id } });
+        if (!withdrawal) throw new NotFoundException('Withdrawal not found');
+        if (withdrawal.status !== WithdrawalStatus.REQUESTED) {
+          throw new BadRequestException('Only requested withdrawals can be rejected');
+        }
+        const updated = await tx.withdrawal.update({
+          where: { id },
+          data: {
+            status: WithdrawalStatus.REJECTED,
+            reviewedAt: new Date(),
+            reviewedById: adminId,
+            rejectionReason: reason,
+          },
+        });
+        await this.releaseHold(
+          tx,
+          withdrawal.vendorId,
+          id,
+          withdrawal.amountCents,
+          'Withdrawal rejected',
+        );
+        await this.audit.log(
+          {
+            actorId: adminId,
+            action: 'withdrawal.reject',
+            entityType: 'Withdrawal',
+            entityId: id,
+            metadata: { reason },
+          },
+          tx,
+        );
+        return updated;
+      })
+      .then((updated) => {
+        this.notify(updated);
+        return updated;
       });
-      await this.releaseHold(tx, withdrawal.vendorId, id, withdrawal.amountCents, 'Withdrawal rejected');
-      await this.audit.log(
-        { actorId: adminId, action: 'withdrawal.reject', entityType: 'Withdrawal', entityId: id, metadata: { reason } },
-        tx,
-      );
-      return updated;
-    }).then((updated) => {
-      this.notify(updated);
-      return updated;
-    });
   }
 
   // ---- Gateway callbacks -------------------------------------------------
@@ -303,22 +363,36 @@ export class WithdrawalsService {
   }
 
   private async markFailed(id: string, reason: string) {
-    return this.prisma.$transaction(async (tx) => {
-      const withdrawal = await tx.withdrawal.findUniqueOrThrow({ where: { id } });
-      if (withdrawal.status === WithdrawalStatus.FAILED) return withdrawal;
-      const updated = await tx.withdrawal.update({
-        where: { id },
-        data: { status: WithdrawalStatus.FAILED, adminNotes: reason },
+    return this.prisma
+      .$transaction(async (tx) => {
+        const withdrawal = await tx.withdrawal.findUniqueOrThrow({ where: { id } });
+        if (withdrawal.status === WithdrawalStatus.FAILED) return withdrawal;
+        const updated = await tx.withdrawal.update({
+          where: { id },
+          data: { status: WithdrawalStatus.FAILED, adminNotes: reason },
+        });
+        await this.releaseHold(
+          tx,
+          withdrawal.vendorId,
+          id,
+          withdrawal.amountCents,
+          'Withdrawal failed; funds returned',
+        );
+        return updated;
+      })
+      .then((updated) => {
+        if (updated.status === WithdrawalStatus.FAILED) this.notify(updated);
+        return updated;
       });
-      await this.releaseHold(tx, withdrawal.vendorId, id, withdrawal.amountCents, 'Withdrawal failed; funds returned');
-      return updated;
-    }).then((updated) => {
-      if (updated.status === WithdrawalStatus.FAILED) this.notify(updated);
-      return updated;
-    });
   }
 
-  private async releaseHold(tx: Prisma.TransactionClient, vendorId: string, withdrawalId: string, amountCents: number, description: string) {
+  private async releaseHold(
+    tx: Prisma.TransactionClient,
+    vendorId: string,
+    withdrawalId: string,
+    amountCents: number,
+    description: string,
+  ) {
     const alreadyReleased = await tx.ledgerEntry.findFirst({
       where: { withdrawalId, type: LedgerEntryType.WITHDRAWAL_RELEASE },
     });
@@ -346,15 +420,20 @@ export class WithdrawalsService {
     });
     if (!vendor) throw new NotFoundException('Vendor not found');
 
-    const [subscription, balance, minWithdrawalCents, requestsInLastWeek, openCount] = await Promise.all([
-      this.subscriptions.getEntitling(vendorId, tx),
-      this.ledger.getBalance(vendorId, tx),
-      this.settings.get(SETTING_KEYS.MIN_WITHDRAWAL_CENTS),
-      tx.withdrawal.count({
-        where: { vendorId, status: { in: COUNTED_STATUSES }, requestedAt: { gte: new Date(Date.now() - WEEK_MS) } },
-      }),
-      tx.withdrawal.count({ where: { vendorId, status: { in: OPEN_STATUSES } } }),
-    ]);
+    const [subscription, balance, minWithdrawalCents, requestsInLastWeek, openCount] =
+      await Promise.all([
+        this.subscriptions.getEntitling(vendorId, tx),
+        this.ledger.getBalance(vendorId, tx),
+        this.settings.get(SETTING_KEYS.MIN_WITHDRAWAL_CENTS),
+        tx.withdrawal.count({
+          where: {
+            vendorId,
+            status: { in: COUNTED_STATUSES },
+            requestedAt: { gte: new Date(Date.now() - WEEK_MS) },
+          },
+        }),
+        tx.withdrawal.count({ where: { vendorId, status: { in: OPEN_STATUSES } } }),
+      ]);
 
     return {
       vendorActive: vendor.status === VendorStatus.ACTIVE,

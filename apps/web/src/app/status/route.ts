@@ -8,8 +8,12 @@ export const maxDuration = 60;
  * Exposes no secrets (the API base is public in the browser bundle anyway).
  */
 export async function GET() {
-  const raw = { API_URL: process.env.API_URL ?? null, NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL ?? null };
-  const base = ((process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000').trim())
+  const raw = {
+    API_URL: process.env.API_URL ?? null,
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL ?? null,
+  };
+  const base = (process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000')
+    .trim()
     .replace(/\/+$/, '')
     .replace(/\/api$/, '');
   const target = `${base}/api/health`;

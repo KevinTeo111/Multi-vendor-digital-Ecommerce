@@ -129,13 +129,32 @@ the command resets the demo accounts.
 - Interactive transactions default to a 30 s timeout (see `src/prisma/adapter.ts`) because remote
   databases add latency to every round trip.
 
-## Testing
+## Code quality
 
 ```bash
-npm test -w apps/api        # unit tests: commission math, withdrawal rules, Pagar.me webhook mapping, module wiring
+npm run format:check        # Prettier (npm run format to fix)
 npm run typecheck           # all workspaces
+npm test -w apps/api        # unit tests (money, withdrawal rules, product lifecycle, settings, pagination, Stripe webhooks, module wiring)
 npm run build               # all workspaces
 ```
+
+The same four steps run in GitHub Actions on every push and pull request (`.github/workflows/ci.yml`).
+
+Conventions that keep the code easy to change:
+
+- **One responsibility per service.** `CheckoutService` owns order creation and the PENDING → PAID/FAILED
+  transitions; `OrdersService` only reads. `ProductsService` delegates every status change to the
+  transition table in `product-status.ts`.
+- **Request validation lives in `dto/` files**, never inline in controllers.
+- **Lists use `findPage` / `mapPage`** (`common/dto/pagination.dto.ts`) instead of hand-written
+  query-plus-count pairs.
+- **Signed media URLs come from `StorageService.withThumbnail` / `withProductMedia`.**
+- **Configuration is parsed once** in `config/env.ts` (`webOrigins`, `primaryWebUrl`); modules never
+  re-parse environment variables.
+- **The payment provider is an interface** (`payments/gateway/payment-gateway.interface.ts`); adapters are
+  the only files that import a provider SDK.
+- **Web:** pages call the API through `lib/api.ts` and `useFetch`/`useAction`; UI primitives live in
+  `components/ui.tsx`; all user-visible text goes through the dictionaries in `i18n/`.
 
 ## Deployment notes
 

@@ -26,7 +26,12 @@ export function SortSelect({ value }: { value?: string }) {
   return (
     <label className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm shadow-sm">
       <span className="text-slate-500">{t('browse.sortBy')}</span>
-      <select value={value ?? 'newest'} onChange={(e) => change(e.target.value)} className="bg-transparent font-semibold text-navy-900 focus:outline-none" aria-label={t('browse.sortBy')}>
+      <select
+        value={value ?? 'newest'}
+        onChange={(e) => change(e.target.value)}
+        className="bg-transparent font-semibold text-navy-900 focus:outline-none"
+        aria-label={t('browse.sortBy')}
+      >
         {OPTIONS.map(([v, label]) => (
           <option key={v} value={v}>
             {label}

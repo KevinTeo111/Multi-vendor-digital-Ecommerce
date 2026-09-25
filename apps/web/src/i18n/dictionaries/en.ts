@@ -95,7 +95,8 @@ const en = {
     badge: 'Digital Products Marketplace',
     title1: 'Discover, Buy & Sell',
     title2: 'Digital Products',
-    subtitle: 'Premium digital products from talented creators. Everything you need to grow, create and succeed, all in one place.',
+    subtitle:
+      'Premium digital products from talented creators. Everything you need to grow, create and succeed, all in one place.',
     searchPlaceholder: 'Search for digital products, e.g. templates, software, courses…',
     trust1: 'Secure Payments',
     trust1Text: 'Protected transactions',
@@ -112,7 +113,8 @@ const en = {
     latestSubtitle: 'The latest products added to the marketplace',
     whyBadge: 'Why buy here',
     whyTitle: 'Everything you need, delivered instantly',
-    whyText: 'Every product is reviewed before it goes live. Pay once, download right away, and keep lifetime access in your library.',
+    whyText:
+      'Every product is reviewed before it goes live. Pay once, download right away, and keep lifetime access in your library.',
     why1: 'Instant access after payment',
     why2: 'Lifetime download access',
     why3: 'Secure payment processing',
@@ -183,7 +185,8 @@ const en = {
     badge: 'For creators',
     title1: 'Start selling your',
     title2: 'digital products',
-    subtitle: 'Pick a plan, open your store and publish. Every listing is reviewed by our team before it goes live, and you keep control of your earnings.',
+    subtitle:
+      'Pick a plan, open your store and publish. Every listing is reviewed by our team before it goes live, and you keep control of your earnings.',
     mostPopular: 'Most popular',
     commission: '{pct} platform commission per sale',
     listedProducts: '{count} listed products',
@@ -204,7 +207,8 @@ const en = {
     noAccount: 'No account?',
     createOne: 'Create one',
     loginSideTitle: 'Your digital products, one place.',
-    loginSideText: 'Buy once and download forever, or open your own store and start earning from your work.',
+    loginSideText:
+      'Buy once and download forever, or open your own store and start earning from your work.',
     loginBullet1: 'Instant, protected downloads',
     loginBullet2: 'Every listing reviewed by our team',
     loginBullet3: 'Secure payments',
@@ -222,7 +226,8 @@ const en = {
     registerSubmitSeller: 'Create seller account',
     alreadyRegistered: 'Already registered?',
     registerSideTitle: 'Join our growing community of creators.',
-    registerSideText: 'Sell your digital products, reach buyers worldwide, and manage everything from one dashboard.',
+    registerSideText:
+      'Sell your digital products, reach buyers worldwide, and manage everything from one dashboard.',
     registerBullet1: 'Keep the majority of every sale',
     registerBullet2: 'Automatic delivery after payment',
     registerBullet3: 'Easy-to-use seller dashboard',
@@ -250,7 +255,8 @@ const en = {
     items: 'Items',
     total: 'Total',
     placed: 'Placed {date}',
-    pending: 'Waiting for payment confirmation. This page updates once the payment provider confirms.',
+    pending:
+      'Waiting for payment confirmation. This page updates once the payment provider confirms.',
     failed: 'Payment failed. You can try again from your cart.',
     failedReason: 'Payment failed: {reason}. You can try again from your cart.',
     confirmed: 'Payment confirmed. Your files are ready to download.',
@@ -326,7 +332,8 @@ const en = {
     rejectedReason: 'Rejected: {reason}',
     // product form
     newProductTitle: 'New product',
-    newProductDescription: 'Save the details first, then upload files and images on the next screen.',
+    newProductDescription:
+      'Save the details first, then upload files and images on the next screen.',
     createDraft: 'Create draft',
     formTitle: 'Title',
     formCategory: 'Category',
@@ -381,7 +388,8 @@ const en = {
     requestWithdrawal: 'Request a withdrawal',
     amountOptional: 'Amount (leave empty for full balance)',
     requestButton: 'Request withdrawal',
-    weeklyUsed: '{used} of {limit} weekly request(s) used. Approved withdrawals are paid to your registered payout account.',
+    weeklyUsed:
+      '{used} of {limit} weekly request(s) used. Approved withdrawals are paid to your registered payout account.',
     withdrawalsTitle: 'Withdrawals',
     noWithdrawals: 'No withdrawals yet',
     requested: 'Requested',
@@ -394,7 +402,8 @@ const en = {
     until: 'until {date}',
     // subscription
     planTitle: 'Your plan',
-    planDescription: 'Plans define your commission rate, product limit and weekly withdrawal allowance.',
+    planDescription:
+      'Plans define your commission rate, product limit and weekly withdrawal allowance.',
     currentSubscription: 'Current subscription',
     cancelPlan: 'Cancel plan',
     cancelConfirm: 'Cancel your plan? You keep access until the end of the current period.',
@@ -475,16 +484,20 @@ const en = {
     tags: 'Tags',
     // withdrawals
     withdrawalsTitle: 'Withdrawals',
-    manualDescription: 'Manual payouts: approve, send the money by PIX or bank transfer, then mark the withdrawal as paid.',
-    gatewayDescription: 'Gateway payouts: approving triggers a transfer through the payment provider.',
+    manualDescription:
+      'Manual payouts: approve, send the money by PIX or bank transfer, then mark the withdrawal as paid.',
+    gatewayDescription:
+      'Gateway payouts: approving triggers a transfer through the payment provider.',
     noWithdrawalsView: 'No withdrawals in this view',
     payoutTo: 'Payout to',
-    approveManualConfirm: 'Approve {amount} for {vendor}? You will then send the money manually and mark it as paid.',
+    approveManualConfirm:
+      'Approve {amount} for {vendor}? You will then send the money manually and mark it as paid.',
     approveGatewayConfirm: 'Approve and transfer {amount} to {vendor} through the payment gateway?',
     approveAndPay: 'Approve & pay',
     markPaid: 'Mark as paid',
     markPaidTitle: 'Mark withdrawal as paid',
-    markPaidText: 'Confirm that you sent {amount} to {vendor}. The vendor will see the withdrawal as paid.',
+    markPaidText:
+      'Confirm that you sent {amount} to {vendor}. The vendor will see the withdrawal as paid.',
     reference: 'Transaction reference (optional)',
     referenceHint: 'PIX end-to-end ID or bank receipt number',
     notes: 'Notes (optional)',
@@ -539,7 +552,8 @@ const en = {
     availableForNew: 'Available for new subscriptions',
     subscribers: 'Subscribers',
     deactivate: 'Deactivate',
-    deactivateConfirm: 'Deactivate {name}? Existing subscribers keep it; new vendors cannot choose it.',
+    deactivateConfirm:
+      'Deactivate {name}? Existing subscribers keep it; new vendors cannot choose it.',
     // categories
     categoriesTitle: 'Categories',
     newCategory: 'New category',
@@ -565,7 +579,8 @@ const en = {
     defaultCommission: 'Default commission (%)',
     defaultCommissionHint: 'Applied when a vendor has no plan',
     payoutMode: 'Payout mode',
-    payoutModeHint: 'Manual: you send PIX/bank transfers and mark withdrawals paid. Gateway: transfers go through the payment provider.',
+    payoutModeHint:
+      'Manual: you send PIX/bank transfers and mark withdrawals paid. Gateway: transfers go through the payment provider.',
     payoutManual: 'Manual (PIX / bank transfer by admin)',
     payoutGateway: 'Gateway (automatic transfer)',
     maxUpload: 'Max upload size (MB)',

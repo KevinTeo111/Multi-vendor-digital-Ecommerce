@@ -11,7 +11,8 @@ export interface AuthUser {
 }
 
 export type VendorStatus = 'PENDING' | 'ACTIVE' | 'SUSPENDED';
-export type ProductStatus = 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | 'UNPUBLISHED' | 'BLOCKED';
+export type ProductStatus =
+  'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | 'UNPUBLISHED' | 'BLOCKED';
 export type OrderStatus = 'PENDING' | 'PAID' | 'FAILED' | 'CANCELED' | 'REFUNDED';
 export type WithdrawalStatus = 'REQUESTED' | 'APPROVED' | 'PAID' | 'REJECTED' | 'FAILED';
 export type SubscriptionStatus = 'PENDING' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED' | 'EXPIRED';
@@ -107,7 +108,13 @@ export interface VendorProduct {
   createdAt: string;
   updatedAt: string;
   submittedAt: string | null;
-  vendor?: { id: string; storeName: string; slug: string; status: VendorStatus; user?: { email: string } };
+  vendor?: {
+    id: string;
+    storeName: string;
+    slug: string;
+    status: VendorStatus;
+    user?: { email: string };
+  };
 }
 
 export interface VendorPublic {
@@ -183,9 +190,20 @@ export interface OrderItem {
   commissionRateBps: number;
   commissionCents: number;
   vendorNetCents: number;
-  product: { id: string; slug: string; thumbnailUrl?: string | null; version: string | null; files?: ProductFile[] };
+  product: {
+    id: string;
+    slug: string;
+    thumbnailUrl?: string | null;
+    version: string | null;
+    files?: ProductFile[];
+  };
   vendor: { id: string; storeName: string; slug: string };
-  order?: { id: string; orderNumber: string; paidAt: string | null; buyer?: { name: string; email?: string } };
+  order?: {
+    id: string;
+    orderNumber: string;
+    paidAt: string | null;
+    buyer?: { name: string; email?: string };
+  };
   _count?: { downloads: number };
 }
 
@@ -213,10 +231,29 @@ export interface VendorSale {
   vendorNetCents: number;
   createdAt: string;
   downloads: number;
-  order: { id: string; orderNumber: string; paidAt: string | null; paymentMethod: string | null; currency: string; buyer: { name: string } };
-  product: { id: string; slug: string; title: string; thumbnailUrl: string | null; version: string | null };
+  order: {
+    id: string;
+    orderNumber: string;
+    paidAt: string | null;
+    paymentMethod: string | null;
+    currency: string;
+    buyer: { name: string };
+  };
+  product: {
+    id: string;
+    slug: string;
+    title: string;
+    thumbnailUrl: string | null;
+    version: string | null;
+  };
   plan: { id: string; name: string } | null;
-  ledgerEntries: Array<{ id: string; type: string; status: 'PENDING' | 'AVAILABLE'; amountCents: number; availableAt: string | null }>;
+  ledgerEntries: Array<{
+    id: string;
+    type: string;
+    status: 'PENDING' | 'AVAILABLE';
+    amountCents: number;
+    availableAt: string | null;
+  }>;
 }
 
 export interface Balance {

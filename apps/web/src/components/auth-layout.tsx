@@ -4,7 +4,17 @@ import type { ReactNode } from 'react';
 import { CheckIcon } from './icons';
 import { Logo } from './logo';
 
-export function AuthLayout({ title, subtitle, bullets, children }: { title: string; subtitle: string; bullets: string[]; children: ReactNode }) {
+export function AuthLayout({
+  title,
+  subtitle,
+  bullets,
+  children,
+}: {
+  title: string;
+  subtitle: string;
+  bullets: string[];
+  children: ReactNode;
+}) {
   return (
     <div className="mx-auto grid w-full max-w-6xl flex-1 gap-8 px-4 py-10 sm:px-6 lg:grid-cols-2 lg:items-center">
       <section className="bg-hero hidden rounded-3xl p-10 text-white lg:block">
@@ -22,7 +32,9 @@ export function AuthLayout({ title, subtitle, bullets, children }: { title: stri
           ))}
         </ul>
       </section>
-      <section className="mx-auto w-full max-w-md rounded-3xl border border-slate-200/80 bg-white p-8 shadow-card">{children}</section>
+      <section className="mx-auto w-full max-w-md rounded-3xl border border-slate-200/80 bg-white p-8 shadow-card">
+        {children}
+      </section>
     </div>
   );
 }

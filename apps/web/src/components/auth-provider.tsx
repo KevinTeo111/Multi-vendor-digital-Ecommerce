@@ -1,6 +1,14 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 import { api, clearTokens, getTokens, setTokens } from '@/lib/api';
 import type { AuthUser } from '@/lib/types';
 
@@ -8,7 +16,13 @@ interface AuthState {
   user: AuthUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<AuthUser>;
-  register: (input: { email: string; password: string; name: string; role: 'BUYER' | 'VENDOR'; storeName?: string }) => Promise<AuthUser>;
+  register: (input: {
+    email: string;
+    password: string;
+    name: string;
+    role: 'BUYER' | 'VENDOR';
+    storeName?: string;
+  }) => Promise<AuthUser>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -44,14 +58,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refreshUser]);
 
   const login = useCallback(async (email: string, password: string) => {
-    const res = await api<AuthResponse>('/auth/login', { method: 'POST', body: { email, password }, auth: false });
+    const res = await api<AuthResponse>('/auth/login', {
+      method: 'POST',
+      body: { email, password },
+      auth: false,
+    });
     setTokens(res);
     setUser(res.user);
     return res.user;
   }, []);
 
   const register = useCallback(async (input: Parameters<AuthState['register']>[0]) => {
-    const res = await api<AuthResponse>('/auth/register', { method: 'POST', body: input, auth: false });
+    const res = await api<AuthResponse>('/auth/register', {
+      method: 'POST',
+      body: input,
+      auth: false,
+    });
     setTokens(res);
     setUser(res.user);
     return res.user;
@@ -60,13 +82,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     const { refreshToken } = getTokens();
     if (refreshToken) {
-      await api('/auth/logout', { method: 'POST', body: { refreshToken }, auth: false }).catch(() => undefined);
+      await api('/auth/logout', { method: 'POST', body: { refreshToken }, auth: false }).catch(
+        () => undefined,
+      );
     }
     clearTokens();
     setUser(null);
   }, []);
 
-  const value = useMemo(() => ({ user, loading, login, register, logout, refreshUser }), [user, loading, login, register, logout, refreshUser]);
+  const value = useMemo(
+    () => ({ user, loading, login, register, logout, refreshUser }),
+    [user, loading, login, register, logout, refreshUser],
+  );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

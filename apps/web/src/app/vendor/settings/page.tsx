@@ -1,7 +1,17 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
-import { Alert, Button, Card, Field, Input, Loading, PageHeader, Select, Textarea } from '@/components/ui';
+import {
+  Alert,
+  Button,
+  Card,
+  Field,
+  Input,
+  Loading,
+  PageHeader,
+  Select,
+  Textarea,
+} from '@/components/ui';
 import { useT } from '@/i18n/client';
 import { api } from '@/lib/api';
 import type { PayoutDetails, VendorMe } from '@/lib/types';
@@ -18,7 +28,11 @@ export default function VendorSettingsPage() {
 
   useEffect(() => {
     if (me.data) {
-      setForm({ storeName: me.data.storeName, slug: me.data.slug, description: me.data.description ?? '' });
+      setForm({
+        storeName: me.data.storeName,
+        slug: me.data.slug,
+        description: me.data.description ?? '',
+      });
       if (me.data.payoutDetails) setPay(me.data.payoutDetails);
     }
   }, [me.data]);
@@ -27,7 +41,12 @@ export default function VendorSettingsPage() {
 
   const saveProfile = async (e: FormEvent) => {
     e.preventDefault();
-    const ok = await profile.run(() => api('/vendors/me', { method: 'PATCH', body: { ...form, description: form.description || undefined } }));
+    const ok = await profile.run(() =>
+      api('/vendors/me', {
+        method: 'PATCH',
+        body: { ...form, description: form.description || undefined },
+      }),
+    );
     if (ok !== undefined) {
       setSaved(t('vendor.profileSaved'));
       me.reload();
@@ -36,15 +55,21 @@ export default function VendorSettingsPage() {
 
   const savePayout = async (e: FormEvent) => {
     e.preventDefault();
-    const body = Object.fromEntries(Object.entries(pay).filter(([, v]) => v !== '' && v !== undefined));
-    const ok = await payout.run(() => api('/vendors/me', { method: 'PATCH', body: { payoutDetails: body } }));
+    const body = Object.fromEntries(
+      Object.entries(pay).filter(([, v]) => v !== '' && v !== undefined),
+    );
+    const ok = await payout.run(() =>
+      api('/vendors/me', { method: 'PATCH', body: { payoutDetails: body } }),
+    );
     if (ok !== undefined) {
       setSaved(t('vendor.payoutSaved'));
       me.reload();
     }
   };
 
-  const setP = (k: keyof PayoutDetails) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setPay({ ...pay, [k]: e.target.value });
+  const setP =
+    (k: keyof PayoutDetails) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+      setPay({ ...pay, [k]: e.target.value });
 
   return (
     <div className="space-y-6">
@@ -55,13 +80,31 @@ export default function VendorSettingsPage() {
         <form onSubmit={saveProfile} className="space-y-4">
           {profile.error && <Alert tone="error">{profile.error}</Alert>}
           <Field label={t('vendor.storeNameLabel')}>
-            <Input value={form.storeName} onChange={(e) => setForm({ ...form, storeName: e.target.value })} required minLength={2} />
+            <Input
+              value={form.storeName}
+              onChange={(e) => setForm({ ...form, storeName: e.target.value })}
+              required
+              minLength={2}
+            />
           </Field>
-          <Field label={t('vendor.storeSlug')} hint={t('vendor.storeSlugHint', { slug: form.slug || '…' })}>
-            <Input value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} pattern="[a-z0-9-]+" minLength={3} required />
+          <Field
+            label={t('vendor.storeSlug')}
+            hint={t('vendor.storeSlugHint', { slug: form.slug || '…' })}
+          >
+            <Input
+              value={form.slug}
+              onChange={(e) => setForm({ ...form, slug: e.target.value })}
+              pattern="[a-z0-9-]+"
+              minLength={3}
+              required
+            />
           </Field>
           <Field label={t('vendor.storeDescription')}>
-            <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={4} />
+            <Textarea
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              rows={4}
+            />
           </Field>
           <Button type="submit" loading={profile.busy}>
             {t('vendor.saveProfile')}

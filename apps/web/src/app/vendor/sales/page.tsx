@@ -8,7 +8,9 @@ import { useRealtimeEvent } from '@/lib/realtime';
 import type { OrderItem, Paginated } from '@/lib/types';
 import { useFetch } from '@/lib/use-fetch';
 
-type Sales = Paginated<OrderItem> & { totals: { grossCents: number; commissionCents: number; netCents: number } };
+type Sales = Paginated<OrderItem> & {
+  totals: { grossCents: number; commissionCents: number; netCents: number };
+};
 
 export default function VendorSalesPage() {
   const t = useT();
@@ -42,12 +44,17 @@ export default function VendorSalesPage() {
                 tag={<span className="font-mono">{s.order?.orderNumber}</span>}
                 title={
                   <>
-                    {s.productTitle} <span className="text-xs font-normal text-slate-500">· {s.order?.buyer?.name}</span>
+                    {s.productTitle}{' '}
+                    <span className="text-xs font-normal text-slate-500">
+                      · {s.order?.buyer?.name}
+                    </span>
                   </>
                 }
                 trailing={
                   <span className="text-right">
-                    <span className="block font-semibold text-navy-900">{formatMoney(s.vendorNetCents)}</span>
+                    <span className="block font-semibold text-navy-900">
+                      {formatMoney(s.vendorNetCents)}
+                    </span>
                     <span className="block text-xs text-slate-500">
                       {t('vendor.gross')} {formatMoney(s.priceCents)}
                     </span>
@@ -55,7 +62,11 @@ export default function VendorSalesPage() {
                 }
               />
             ))}
-            <Pagination page={sales.data.page} totalPages={sales.data.totalPages} onChange={setPage} />
+            <Pagination
+              page={sales.data.page}
+              totalPages={sales.data.totalPages}
+              onChange={setPage}
+            />
           </div>
         )}
       </Card>

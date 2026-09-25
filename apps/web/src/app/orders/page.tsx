@@ -3,7 +3,16 @@
 import { useState } from 'react';
 import { PageContainer } from '@/components/page-container';
 import { RequireRole } from '@/components/require-role';
-import { Badge, Card, EmptyState, LinkButton, ListRow, Loading, PageHeader, Pagination } from '@/components/ui';
+import {
+  Badge,
+  Card,
+  EmptyState,
+  LinkButton,
+  ListRow,
+  Loading,
+  PageHeader,
+  Pagination,
+} from '@/components/ui';
 import { useT } from '@/i18n/client';
 import { formatDate, formatMoney } from '@/lib/format';
 import { useRealtimeEvent } from '@/lib/realtime';
@@ -20,9 +29,23 @@ function OrdersList() {
 
   return (
     <div>
-      <PageHeader title={t('orders.title')} actions={<LinkButton href="/library" variant="secondary" arrow>{t('orders.myDownloads')}</LinkButton>} />
+      <PageHeader
+        title={t('orders.title')}
+        actions={
+          <LinkButton href="/library" variant="secondary" arrow>
+            {t('orders.myDownloads')}
+          </LinkButton>
+        }
+      />
       {data.data.items.length === 0 ? (
-        <EmptyState title={t('orders.empty')} action={<LinkButton href="/products" arrow>{t('cart.browse')}</LinkButton>} />
+        <EmptyState
+          title={t('orders.empty')}
+          action={
+            <LinkButton href="/products" arrow>
+              {t('cart.browse')}
+            </LinkButton>
+          }
+        />
       ) : (
         <Card padded={false}>
           <div className="px-5">
@@ -35,7 +58,9 @@ function OrdersList() {
                 title={o.items.map((i) => i.productTitle).join(', ')}
                 trailing={
                   <span className="flex items-center gap-3">
-                    <span className="font-semibold text-navy-900">{formatMoney(o.totalCents, o.currency)}</span>
+                    <span className="font-semibold text-navy-900">
+                      {formatMoney(o.totalCents, o.currency)}
+                    </span>
                     <Badge status={o.status} />
                   </span>
                 }
@@ -43,7 +68,11 @@ function OrdersList() {
             ))}
           </div>
           <div className="px-5 pb-4">
-            <Pagination page={data.data.page} totalPages={data.data.totalPages} onChange={setPage} />
+            <Pagination
+              page={data.data.page}
+              totalPages={data.data.totalPages}
+              onChange={setPage}
+            />
           </div>
         </Card>
       )}

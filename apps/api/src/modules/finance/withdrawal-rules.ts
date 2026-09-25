@@ -18,8 +18,7 @@ export interface WithdrawalRuleInput {
 }
 
 export type WithdrawalRuleResult =
-  | { ok: true; amountCents: number }
-  | { ok: false; reason: string; code: WithdrawalDenialCode };
+  { ok: true; amountCents: number } | { ok: false; reason: string; code: WithdrawalDenialCode };
 
 export type WithdrawalDenialCode =
   | 'VENDOR_INACTIVE'
@@ -36,13 +35,25 @@ export function evaluateWithdrawal(input: WithdrawalRuleInput): WithdrawalRuleRe
     return { ok: false, code: 'VENDOR_INACTIVE', reason: 'Vendor account is not active' };
   }
   if (!input.hasEntitlingSubscription) {
-    return { ok: false, code: 'NO_SUBSCRIPTION', reason: 'An active plan subscription is required to withdraw' };
+    return {
+      ok: false,
+      code: 'NO_SUBSCRIPTION',
+      reason: 'An active plan subscription is required to withdraw',
+    };
   }
   if (!input.hasPayoutDetails) {
-    return { ok: false, code: 'NO_PAYOUT_DETAILS', reason: 'Add your payout details before requesting a withdrawal' };
+    return {
+      ok: false,
+      code: 'NO_PAYOUT_DETAILS',
+      reason: 'Add your payout details before requesting a withdrawal',
+    };
   }
   if (input.hasOpenWithdrawal) {
-    return { ok: false, code: 'OPEN_WITHDRAWAL', reason: 'You already have a withdrawal awaiting processing' };
+    return {
+      ok: false,
+      code: 'OPEN_WITHDRAWAL',
+      reason: 'You already have a withdrawal awaiting processing',
+    };
   }
   if (input.requestsInLastWeek >= input.withdrawalsPerWeek) {
     return {
@@ -54,10 +65,18 @@ export function evaluateWithdrawal(input: WithdrawalRuleInput): WithdrawalRuleRe
 
   const amount = input.requestedCents ?? input.availableCents;
   if (!Number.isInteger(amount) || amount <= 0) {
-    return { ok: false, code: 'INVALID_AMOUNT', reason: 'Withdrawal amount must be a positive whole number of cents' };
+    return {
+      ok: false,
+      code: 'INVALID_AMOUNT',
+      reason: 'Withdrawal amount must be a positive whole number of cents',
+    };
   }
   if (amount > input.availableCents) {
-    return { ok: false, code: 'INSUFFICIENT_BALANCE', reason: 'Requested amount exceeds your available balance' };
+    return {
+      ok: false,
+      code: 'INSUFFICIENT_BALANCE',
+      reason: 'Requested amount exceeds your available balance',
+    };
   }
   if (amount < input.minWithdrawalCents) {
     return {

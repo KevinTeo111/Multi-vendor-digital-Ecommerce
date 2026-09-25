@@ -1,12 +1,12 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import { Role } from '@prisma/client';
-import { IsOptional, IsString, MaxLength } from 'class-validator';
 import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { AuthUser } from '../../common/types/auth-user';
 import {
   AdminProductsQuery,
+  BlockProductDto,
   ConfirmFileDto,
   ConfirmImageDto,
   CreateProductDto,
@@ -20,10 +20,6 @@ import {
 } from './dto/product.dto';
 import { ProductFilesService } from './product-files.service';
 import { ProductsService } from './products.service';
-
-class BlockProductDto {
-  @IsOptional() @IsString() @MaxLength(1000) reason?: string;
-}
 
 // ---------------------------------------------------------------------------
 // Public storefront
@@ -74,7 +70,11 @@ export class VendorProductsController {
   }
 
   @Patch(':id')
-  update(@CurrentUser('vendorId') vendorId: string, @Param('id') id: string, @Body() dto: UpdateProductDto) {
+  update(
+    @CurrentUser('vendorId') vendorId: string,
+    @Param('id') id: string,
+    @Body() dto: UpdateProductDto,
+  ) {
     return this.products.update(vendorId, id, dto);
   }
 
@@ -105,12 +105,20 @@ export class VendorProductsController {
   }
 
   @Post(':id/files/confirm')
-  confirmFile(@CurrentUser('vendorId') vendorId: string, @Param('id') id: string, @Body() dto: ConfirmFileDto) {
+  confirmFile(
+    @CurrentUser('vendorId') vendorId: string,
+    @Param('id') id: string,
+    @Body() dto: ConfirmFileDto,
+  ) {
     return this.files.confirmFile(vendorId, id, dto);
   }
 
   @Delete(':id/files/:fileId')
-  removeFile(@CurrentUser('vendorId') vendorId: string, @Param('id') id: string, @Param('fileId') fileId: string) {
+  removeFile(
+    @CurrentUser('vendorId') vendorId: string,
+    @Param('id') id: string,
+    @Param('fileId') fileId: string,
+  ) {
     return this.files.removeFile(vendorId, id, fileId);
   }
 
@@ -126,12 +134,20 @@ export class VendorProductsController {
   }
 
   @Post(':id/images/confirm')
-  confirmImage(@CurrentUser('vendorId') vendorId: string, @Param('id') id: string, @Body() dto: ConfirmImageDto) {
+  confirmImage(
+    @CurrentUser('vendorId') vendorId: string,
+    @Param('id') id: string,
+    @Body() dto: ConfirmImageDto,
+  ) {
     return this.files.confirmImage(vendorId, id, dto);
   }
 
   @Delete(':id/images')
-  removeImage(@CurrentUser('vendorId') vendorId: string, @Param('id') id: string, @Body() dto: RemoveImageDto) {
+  removeImage(
+    @CurrentUser('vendorId') vendorId: string,
+    @Param('id') id: string,
+    @Body() dto: RemoveImageDto,
+  ) {
     return this.files.removeImage(vendorId, id, dto.storageKey);
   }
 }
@@ -166,7 +182,11 @@ export class AdminProductsController {
   }
 
   @Post(':id/reject')
-  reject(@Param('id') id: string, @Body() dto: RejectProductDto, @CurrentUser('id') adminId: string) {
+  reject(
+    @Param('id') id: string,
+    @Body() dto: RejectProductDto,
+    @CurrentUser('id') adminId: string,
+  ) {
     return this.products.reject(id, adminId, dto.reason);
   }
 

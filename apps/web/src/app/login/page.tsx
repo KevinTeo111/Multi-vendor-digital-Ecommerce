@@ -26,7 +26,9 @@ function LoginForm() {
     try {
       const user = await login(email, password);
       const next = params.get('next');
-      router.push(next ?? (user.role === 'ADMIN' ? '/admin' : user.role === 'VENDOR' ? '/vendor' : '/'));
+      router.push(
+        next ?? (user.role === 'ADMIN' ? '/admin' : user.role === 'VENDOR' ? '/vendor' : '/'),
+      );
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('auth.loginFailed'));
     } finally {
@@ -42,10 +44,24 @@ function LoginForm() {
       </div>
       {error && <Alert tone="error">{error}</Alert>}
       <Field label={t('auth.email')}>
-        <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" placeholder="voce@exemplo.com" />
+        <Input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          autoComplete="email"
+          placeholder="voce@exemplo.com"
+        />
       </Field>
       <Field label={t('auth.password')}>
-        <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" placeholder="••••••••" />
+        <Input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          autoComplete="current-password"
+          placeholder="••••••••"
+        />
       </Field>
       <Button type="submit" loading={loading} className="w-full" size="lg" arrow>
         {t('auth.loginSubmit')}
@@ -63,7 +79,11 @@ function LoginForm() {
 export default function LoginPage() {
   const t = useT();
   return (
-    <AuthLayout title={t('auth.loginSideTitle')} subtitle={t('auth.loginSideText')} bullets={[t('auth.loginBullet1'), t('auth.loginBullet2'), t('auth.loginBullet3')]}>
+    <AuthLayout
+      title={t('auth.loginSideTitle')}
+      subtitle={t('auth.loginSideText')}
+      bullets={[t('auth.loginBullet1'), t('auth.loginBullet2'), t('auth.loginBullet3')]}
+    >
       <Suspense>
         <LoginForm />
       </Suspense>

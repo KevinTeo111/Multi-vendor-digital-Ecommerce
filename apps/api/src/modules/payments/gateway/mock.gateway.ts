@@ -37,7 +37,12 @@ export class MockPaymentGateway implements PaymentGateway {
     const end = new Date(start);
     if (input.plan.interval === 'YEAR') end.setFullYear(end.getFullYear() + 1);
     else end.setMonth(end.getMonth() + 1);
-    return { gatewaySubscriptionId: `mock_sub_${randomUUID()}`, status: 'active', currentPeriodStart: start, currentPeriodEnd: end };
+    return {
+      gatewaySubscriptionId: `mock_sub_${randomUUID()}`,
+      status: 'active',
+      currentPeriodStart: start,
+      currentPeriodEnd: end,
+    };
   }
 
   async cancelSubscription(gatewaySubscriptionId: string): Promise<void> {
@@ -66,20 +71,51 @@ export class MockPaymentGateway implements PaymentGateway {
 
     switch (payload.type) {
       case 'order.paid':
-        return { kind: 'order.paid', eventId, gatewayOrderId: str('gatewayOrderId') ?? '', chargeId: str('chargeId') };
+        return {
+          kind: 'order.paid',
+          eventId,
+          gatewayOrderId: str('gatewayOrderId') ?? '',
+          chargeId: str('chargeId'),
+        };
       case 'order.failed':
-        return { kind: 'order.failed', eventId, gatewayOrderId: str('gatewayOrderId') ?? '', reason: str('reason') };
+        return {
+          kind: 'order.failed',
+          eventId,
+          gatewayOrderId: str('gatewayOrderId') ?? '',
+          reason: str('reason'),
+        };
       case 'subscription.activated':
-        return { kind: 'subscription.activated', eventId, gatewaySubscriptionId: str('gatewaySubscriptionId') ?? '' };
+        return {
+          kind: 'subscription.activated',
+          eventId,
+          gatewaySubscriptionId: str('gatewaySubscriptionId') ?? '',
+        };
       case 'subscription.renewed':
-        return { kind: 'subscription.renewed', eventId, gatewaySubscriptionId: str('gatewaySubscriptionId') ?? '' };
+        return {
+          kind: 'subscription.renewed',
+          eventId,
+          gatewaySubscriptionId: str('gatewaySubscriptionId') ?? '',
+        };
       case 'subscription.past_due':
       case 'subscription.canceled':
-        return { kind: payload.type, eventId, gatewaySubscriptionId: str('gatewaySubscriptionId') ?? '' };
+        return {
+          kind: payload.type,
+          eventId,
+          gatewaySubscriptionId: str('gatewaySubscriptionId') ?? '',
+        };
       case 'transfer.paid':
-        return { kind: 'transfer.paid', eventId, gatewayTransferId: str('gatewayTransferId') ?? '' };
+        return {
+          kind: 'transfer.paid',
+          eventId,
+          gatewayTransferId: str('gatewayTransferId') ?? '',
+        };
       case 'transfer.failed':
-        return { kind: 'transfer.failed', eventId, gatewayTransferId: str('gatewayTransferId') ?? '', reason: str('reason') };
+        return {
+          kind: 'transfer.failed',
+          eventId,
+          gatewayTransferId: str('gatewayTransferId') ?? '',
+          reason: str('reason'),
+        };
       default:
         return { kind: 'ignored', eventId, type: payload.type ?? 'unknown' };
     }

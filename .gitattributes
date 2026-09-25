@@ -1,0 +1,8 @@
+# Normalize line endings to LF in the repo (matches .editorconfig and Prettier).
+* text=auto eol=lf
+
+# Binary assets
+*.png binary
+*.jpg binary
+*.ico binary
+*.zip binary

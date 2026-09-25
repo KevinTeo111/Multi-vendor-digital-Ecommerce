@@ -44,3 +44,17 @@ if (!parsed.success) {
 
 export const env = parsed.data;
 export type Env = typeof env;
+
+/** Splits a comma-separated origin list, trimming blanks. Exported for tests. */
+export function parseOrigins(value: string): string[] {
+  return value
+    .split(',')
+    .map((o) => o.trim().replace(/\/+$/, ''))
+    .filter(Boolean);
+}
+
+/** Every origin allowed to call the API from a browser (CORS for REST and Socket.IO). */
+export const webOrigins = parseOrigins(env.WEB_URL);
+
+/** The canonical site URL used when the API builds links (checkout return URLs). */
+export const primaryWebUrl = webOrigins[0] ?? 'http://localhost:3000';

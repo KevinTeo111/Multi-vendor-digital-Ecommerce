@@ -1,7 +1,21 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import { Alert, Badge, Button, Card, Field, Input, Loading, Modal, PageHeader, Select, Table, Td, Textarea } from '@/components/ui';
+import {
+  Alert,
+  Badge,
+  Button,
+  Card,
+  Field,
+  Input,
+  Loading,
+  Modal,
+  PageHeader,
+  Select,
+  Table,
+  Td,
+  Textarea,
+} from '@/components/ui';
 import { useT } from '@/i18n/client';
 import { api } from '@/lib/api';
 import { formatBps, formatMoney } from '@/lib/format';
@@ -20,7 +34,17 @@ type PlanForm = {
   sortOrder: string;
 };
 
-const empty: PlanForm = { name: '', description: '', price: '0', interval: 'MONTH', commissionPct: '20', maxProducts: '', withdrawalsPerWeek: '1', isActive: true, sortOrder: '0' };
+const empty: PlanForm = {
+  name: '',
+  description: '',
+  price: '0',
+  interval: 'MONTH',
+  commissionPct: '20',
+  maxProducts: '',
+  withdrawalsPerWeek: '1',
+  isActive: true,
+  sortOrder: '0',
+};
 
 function toForm(p: Plan): PlanForm {
   return {
@@ -57,7 +81,11 @@ export default function AdminPlansPage() {
       isActive: f.isActive,
       sortOrder: Number(f.sortOrder),
     };
-    const ok = await action.run(() => (editing.id ? api(`/admin/plans/${editing.id}`, { method: 'PATCH', body }) : api('/admin/plans', { method: 'POST', body })));
+    const ok = await action.run(() =>
+      editing.id
+        ? api(`/admin/plans/${editing.id}`, { method: 'PATCH', body })
+        : api('/admin/plans', { method: 'POST', body }),
+    );
     if (ok !== undefined) {
       setEditing(null);
       list.reload();
@@ -70,21 +98,54 @@ export default function AdminPlansPage() {
     if (ok !== undefined) list.reload();
   };
 
-  const set = (k: keyof PlanForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
-    setEditing((s) => s && { ...s, form: { ...s.form, [k]: e.target.type === 'checkbox' ? (e.target as HTMLInputElement).checked : e.target.value } });
+  const set =
+    (k: keyof PlanForm) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+      setEditing(
+        (s) =>
+          s && {
+            ...s,
+            form: {
+              ...s.form,
+              [k]:
+                e.target.type === 'checkbox'
+                  ? (e.target as HTMLInputElement).checked
+                  : e.target.value,
+            },
+          },
+      );
 
   if (!list.data) return <Loading />;
 
   return (
     <div>
-      <PageHeader title={t('admin.plansTitle')} description={t('admin.plansDescription')} actions={<Button onClick={() => setEditing({ id: null, form: empty })} arrow>{t('admin.newPlan')}</Button>} />
+      <PageHeader
+        title={t('admin.plansTitle')}
+        description={t('admin.plansDescription')}
+        actions={
+          <Button onClick={() => setEditing({ id: null, form: empty })} arrow>
+            {t('admin.newPlan')}
+          </Button>
+        }
+      />
       {action.error && !editing && (
         <div className="mb-4">
           <Alert tone="error">{action.error}</Alert>
         </div>
       )}
       <Card>
-        <Table headers={[t('admin.plan'), t('admin.price'), t('vendor.commission'), t('admin.maxProducts'), t('admin.withdrawalsPerWeek'), t('admin.subscribers'), t('common.status'), '']}>
+        <Table
+          headers={[
+            t('admin.plan'),
+            t('admin.price'),
+            t('vendor.commission'),
+            t('admin.maxProducts'),
+            t('admin.withdrawalsPerWeek'),
+            t('admin.subscribers'),
+            t('common.status'),
+            '',
+          ]}
+        >
           {list.data.map((p) => (
             <tr key={p.id}>
               <Td>
@@ -92,18 +153,25 @@ export default function AdminPlansPage() {
                 <div className="text-xs text-slate-500">{p.slug}</div>
               </Td>
               <Td>
-                {p.priceCents === 0 ? t('common.free') : formatMoney(p.priceCents, p.currency)} {p.interval === 'YEAR' ? t('common.perYear') : t('common.perMonth')}
+                {p.priceCents === 0 ? t('common.free') : formatMoney(p.priceCents, p.currency)}{' '}
+                {p.interval === 'YEAR' ? t('common.perYear') : t('common.perMonth')}
               </Td>
               <Td>{formatBps(p.commissionRateBps)}</Td>
               <Td>{p.maxProducts ?? '∞'}</Td>
               <Td>{p.withdrawalsPerWeek}</Td>
               <Td>{p.activeSubscriptions ?? 0}</Td>
               <Td>
-                <Badge status={p.isActive ? 'ACTIVE' : 'CANCELED'}>{p.isActive ? t('status.ACTIVE') : t('status.Inactive')}</Badge>
+                <Badge status={p.isActive ? 'ACTIVE' : 'CANCELED'}>
+                  {p.isActive ? t('status.ACTIVE') : t('status.Inactive')}
+                </Badge>
               </Td>
               <Td>
                 <div className="flex gap-1">
-                  <Button size="sm" variant="secondary" onClick={() => setEditing({ id: p.id, form: toForm(p) })}>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setEditing({ id: p.id, form: toForm(p) })}
+                  >
                     {t('common.edit')}
                   </Button>
                   {p.isActive && (
@@ -118,7 +186,11 @@ export default function AdminPlansPage() {
         </Table>
       </Card>
 
-      <Modal open={editing !== null} title={editing?.id ? t('admin.editPlan') : t('admin.newPlan')} onClose={() => setEditing(null)}>
+      <Modal
+        open={editing !== null}
+        title={editing?.id ? t('admin.editPlan') : t('admin.newPlan')}
+        onClose={() => setEditing(null)}
+      >
         {editing && (
           <form onSubmit={save} className="space-y-3">
             {action.error && <Alert tone="error">{action.error}</Alert>}
@@ -130,7 +202,14 @@ export default function AdminPlansPage() {
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label={t('admin.price')}>
-                <Input type="number" min={0} step="0.01" value={editing.form.price} onChange={set('price')} required />
+                <Input
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={editing.form.price}
+                  onChange={set('price')}
+                  required
+                />
               </Field>
               <Field label={t('admin.billingInterval')}>
                 <Select value={editing.form.interval} onChange={set('interval')}>
@@ -139,20 +218,46 @@ export default function AdminPlansPage() {
                 </Select>
               </Field>
               <Field label={t('admin.commissionPct')}>
-                <Input type="number" min={0} max={100} step="0.01" value={editing.form.commissionPct} onChange={set('commissionPct')} required />
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step="0.01"
+                  value={editing.form.commissionPct}
+                  onChange={set('commissionPct')}
+                  required
+                />
               </Field>
               <Field label={t('admin.maxProducts')} hint={t('admin.emptyUnlimited')}>
-                <Input type="number" min={1} value={editing.form.maxProducts} onChange={set('maxProducts')} />
+                <Input
+                  type="number"
+                  min={1}
+                  value={editing.form.maxProducts}
+                  onChange={set('maxProducts')}
+                />
               </Field>
               <Field label={t('admin.withdrawalsPerWeek')}>
-                <Input type="number" min={1} max={7} value={editing.form.withdrawalsPerWeek} onChange={set('withdrawalsPerWeek')} required />
+                <Input
+                  type="number"
+                  min={1}
+                  max={7}
+                  value={editing.form.withdrawalsPerWeek}
+                  onChange={set('withdrawalsPerWeek')}
+                  required
+                />
               </Field>
               <Field label={t('admin.sortOrder')}>
-                <Input type="number" min={0} value={editing.form.sortOrder} onChange={set('sortOrder')} />
+                <Input
+                  type="number"
+                  min={0}
+                  value={editing.form.sortOrder}
+                  onChange={set('sortOrder')}
+                />
               </Field>
             </div>
             <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={editing.form.isActive} onChange={set('isActive')} /> {t('admin.availableForNew')}
+              <input type="checkbox" checked={editing.form.isActive} onChange={set('isActive')} />{' '}
+              {t('admin.availableForNew')}
             </label>
             <div className="flex justify-end gap-2 pt-2">
               <Button type="button" variant="secondary" onClick={() => setEditing(null)}>

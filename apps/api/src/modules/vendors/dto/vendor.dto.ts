@@ -17,40 +17,60 @@ export class PayoutDetailsDto {
   @IsIn(['PIX', 'BANK'])
   type: 'PIX' | 'BANK';
 
-  @IsOptional() @IsString() @MaxLength(120)
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
   pixKey?: string;
 
-  @IsOptional() @IsString() @MaxLength(120)
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
   holderName?: string;
 
-  @IsOptional() @IsString() @MaxLength(20)
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
   holderDocument?: string;
 
-  @IsOptional() @IsString() @MaxLength(10)
+  @IsOptional()
+  @IsString()
+  @MaxLength(10)
   bankCode?: string;
 
-  @IsOptional() @IsString() @MaxLength(10)
+  @IsOptional()
+  @IsString()
+  @MaxLength(10)
   branch?: string;
 
-  @IsOptional() @IsString() @MaxLength(20)
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
   accountNumber?: string;
 
-  @IsOptional() @IsIn(['CHECKING', 'SAVINGS'])
+  @IsOptional()
+  @IsIn(['CHECKING', 'SAVINGS'])
   accountType?: 'CHECKING' | 'SAVINGS';
 }
 
 export class UpdateVendorProfileDto {
-  @IsOptional() @IsString() @MinLength(2) @MaxLength(120)
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(120)
   storeName?: string;
 
   @IsOptional()
   @IsString()
-  @Matches(/^[a-z0-9-]+$/, { message: 'slug must contain only lowercase letters, digits and hyphens' })
+  @Matches(/^[a-z0-9-]+$/, {
+    message: 'slug must contain only lowercase letters, digits and hyphens',
+  })
   @MinLength(3)
   @MaxLength(80)
   slug?: string;
 
-  @IsOptional() @IsString() @MaxLength(3000)
+  @IsOptional()
+  @IsString()
+  @MaxLength(3000)
   description?: string;
 
   @IsOptional()
@@ -69,6 +89,8 @@ export class SetVendorStatusDto {
   @IsEnum(VendorStatus)
   status: VendorStatus;
 
-  @IsOptional() @IsString() @MaxLength(500)
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
   reason?: string;
 }

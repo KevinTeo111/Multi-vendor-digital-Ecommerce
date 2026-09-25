@@ -22,7 +22,10 @@ export class PlansService {
         _count: { select: { subscriptions: { where: { status: SubscriptionStatus.ACTIVE } } } },
       },
     });
-    return plans.map(({ _count, ...plan }) => ({ ...plan, activeSubscriptions: _count.subscriptions }));
+    return plans.map(({ _count, ...plan }) => ({
+      ...plan,
+      activeSubscriptions: _count.subscriptions,
+    }));
   }
 
   async getById(id: string) {
@@ -54,7 +57,10 @@ export class PlansService {
     const billingChanged =
       (dto.priceCents !== undefined && dto.priceCents !== current.priceCents) ||
       (dto.interval !== undefined && dto.interval !== current.interval);
-    return this.prisma.plan.update({ where: { id }, data: { ...dto, ...(billingChanged ? { gatewayPlanId: null } : {}) } });
+    return this.prisma.plan.update({
+      where: { id },
+      data: { ...dto, ...(billingChanged ? { gatewayPlanId: null } : {}) },
+    });
   }
 
   /** Plans are never hard-deleted because order items snapshot them; deactivate instead. */

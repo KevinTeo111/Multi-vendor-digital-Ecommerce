@@ -91,6 +91,31 @@ export class StorageService {
     });
   }
 
+  /** Replaces `thumbnailKey` with a signed `thumbnailUrl` on any record that carries one. */
+  async withThumbnail<T extends { thumbnailKey: string | null }>(
+    item: T,
+  ): Promise<Omit<T, 'thumbnailKey'> & { thumbnailUrl: string | null }> {
+    const { thumbnailKey, ...rest } = item;
+    return { ...rest, thumbnailUrl: await this.createMediaUrl(thumbnailKey) };
+  }
+
+  withThumbnails<T extends { thumbnailKey: string | null }>(items: T[]) {
+    return Promise.all(items.map((i) => this.withThumbnail(i)));
+  }
+
+  /** Same as withThumbnail but keeps the key and also signs preview images (vendor/admin views). */
+  async withProductMedia<T extends { thumbnailKey: string | null; previewImageKeys: string[] }>(
+    product: T,
+  ) {
+    return {
+      ...product,
+      thumbnailUrl: await this.createMediaUrl(product.thumbnailKey),
+      previewImageUrls: await Promise.all(
+        product.previewImageKeys.map((k) => this.createMediaUrl(k)),
+      ),
+    };
+  }
+
   // ---- Object operations -------------------------------------------------
 
   async headObject(key: string): Promise<StoredObjectInfo | null> {
@@ -106,7 +131,9 @@ export class StorageService {
 
   /** Server-side upload; used by seed scripts and admin tooling, never by browser uploads. */
   async putObject(key: string, body: Buffer, contentType: string): Promise<void> {
-    await this.client.send(new PutObjectCommand({ Bucket: this.bucket, Key: key, Body: body, ContentType: contentType }));
+    await this.client.send(
+      new PutObjectCommand({ Bucket: this.bucket, Key: key, Body: body, ContentType: contentType }),
+    );
   }
 
   async deleteObject(key: string): Promise<void> {

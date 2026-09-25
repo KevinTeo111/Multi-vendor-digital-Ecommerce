@@ -14,7 +14,9 @@ function RegisterForm() {
   const t = useT();
   const router = useRouter();
   const params = useSearchParams();
-  const [role, setRole] = useState<'BUYER' | 'VENDOR'>(params.get('role') === 'VENDOR' ? 'VENDOR' : 'BUYER');
+  const [role, setRole] = useState<'BUYER' | 'VENDOR'>(
+    params.get('role') === 'VENDOR' ? 'VENDOR' : 'BUYER',
+  );
   const [form, setForm] = useState({ name: '', email: '', password: '', storeName: '' });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -34,26 +36,42 @@ function RegisterForm() {
     }
   };
 
-  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [k]: e.target.value });
+  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm({ ...form, [k]: e.target.value });
 
   return (
     <form onSubmit={submit} className="space-y-4">
       <div>
-        <h2 className="text-2xl font-bold text-navy-900">{role === 'VENDOR' ? t('auth.registerTitleSeller') : t('auth.registerTitleBuyer')}</h2>
-        <p className="mt-1 text-sm text-slate-500">{role === 'VENDOR' ? t('auth.registerSubtitleSeller') : t('auth.registerSubtitleBuyer')}</p>
+        <h2 className="text-2xl font-bold text-navy-900">
+          {role === 'VENDOR' ? t('auth.registerTitleSeller') : t('auth.registerTitleBuyer')}
+        </h2>
+        <p className="mt-1 text-sm text-slate-500">
+          {role === 'VENDOR' ? t('auth.registerSubtitleSeller') : t('auth.registerSubtitleBuyer')}
+        </p>
       </div>
       {error && <Alert tone="error">{error}</Alert>}
 
       <div className="grid grid-cols-2 gap-1 rounded-full bg-slate-100 p-1 text-sm">
         {(['BUYER', 'VENDOR'] as const).map((r) => (
-          <button key={r} type="button" onClick={() => setRole(r)} className={`rounded-full px-3 py-2 font-semibold transition ${role === r ? 'bg-brand-500 text-white shadow' : 'text-slate-500 hover:text-navy-900'}`}>
+          <button
+            key={r}
+            type="button"
+            onClick={() => setRole(r)}
+            className={`rounded-full px-3 py-2 font-semibold transition ${role === r ? 'bg-brand-500 text-white shadow' : 'text-slate-500 hover:text-navy-900'}`}
+          >
             {r === 'BUYER' ? t('auth.wantBuy') : t('auth.wantSell')}
           </button>
         ))}
       </div>
 
       <Field label={t('auth.fullName')}>
-        <Input value={form.name} onChange={set('name')} required minLength={2} autoComplete="name" />
+        <Input
+          value={form.name}
+          onChange={set('name')}
+          required
+          minLength={2}
+          autoComplete="name"
+        />
       </Field>
       {role === 'VENDOR' && (
         <Field label={t('auth.storeName')} hint={t('auth.storeNameHint')}>
@@ -61,10 +79,23 @@ function RegisterForm() {
         </Field>
       )}
       <Field label={t('auth.email')}>
-        <Input type="email" value={form.email} onChange={set('email')} required autoComplete="email" />
+        <Input
+          type="email"
+          value={form.email}
+          onChange={set('email')}
+          required
+          autoComplete="email"
+        />
       </Field>
       <Field label={t('auth.password')} hint={t('auth.passwordHint')}>
-        <Input type="password" value={form.password} onChange={set('password')} required minLength={8} autoComplete="new-password" />
+        <Input
+          type="password"
+          value={form.password}
+          onChange={set('password')}
+          required
+          minLength={8}
+          autoComplete="new-password"
+        />
       </Field>
       <Button type="submit" loading={loading} className="w-full" size="lg" arrow>
         {role === 'VENDOR' ? t('auth.registerSubmitSeller') : t('auth.registerSubmitBuyer')}
@@ -82,7 +113,11 @@ function RegisterForm() {
 export default function RegisterPage() {
   const t = useT();
   return (
-    <AuthLayout title={t('auth.registerSideTitle')} subtitle={t('auth.registerSideText')} bullets={[t('auth.registerBullet1'), t('auth.registerBullet2'), t('auth.registerBullet3')]}>
+    <AuthLayout
+      title={t('auth.registerSideTitle')}
+      subtitle={t('auth.registerSideText')}
+      bullets={[t('auth.registerBullet1'), t('auth.registerBullet2'), t('auth.registerBullet3')]}
+    >
       <Suspense>
         <RegisterForm />
       </Suspense>

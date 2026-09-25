@@ -77,7 +77,13 @@ export interface TransferResult {
 }
 
 export type NormalizedWebhookEvent =
-  | { kind: 'order.paid'; eventId: string; gatewayOrderId: string; chargeId?: string; paymentMethod?: string }
+  | {
+      kind: 'order.paid';
+      eventId: string;
+      gatewayOrderId: string;
+      chargeId?: string;
+      paymentMethod?: string;
+    }
   | { kind: 'order.failed'; eventId: string; gatewayOrderId: string; reason?: string }
   | {
       kind: 'subscription.activated';
@@ -88,7 +94,13 @@ export type NormalizedWebhookEvent =
       periodStart?: Date;
       periodEnd?: Date;
     }
-  | { kind: 'subscription.renewed'; eventId: string; gatewaySubscriptionId: string; periodStart?: Date; periodEnd?: Date }
+  | {
+      kind: 'subscription.renewed';
+      eventId: string;
+      gatewaySubscriptionId: string;
+      periodStart?: Date;
+      periodEnd?: Date;
+    }
   | { kind: 'subscription.past_due'; eventId: string; gatewaySubscriptionId: string }
   | { kind: 'subscription.canceled'; eventId: string; gatewaySubscriptionId: string }
   | { kind: 'transfer.paid'; eventId: string; gatewayTransferId: string }

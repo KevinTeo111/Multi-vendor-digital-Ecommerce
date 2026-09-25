@@ -96,7 +96,8 @@ const ptBR: Dictionary = {
     badge: 'Marketplace de Produtos Digitais',
     title1: 'Descubra, Compre e Venda',
     title2: 'Produtos Digitais',
-    subtitle: 'Produtos digitais premium de criadores talentosos. Tudo o que você precisa para crescer, criar e ter sucesso, em um só lugar.',
+    subtitle:
+      'Produtos digitais premium de criadores talentosos. Tudo o que você precisa para crescer, criar e ter sucesso, em um só lugar.',
     searchPlaceholder: 'Busque produtos digitais, ex.: templates, software, cursos…',
     trust1: 'Pagamento Seguro',
     trust1Text: 'Transações protegidas',
@@ -113,7 +114,8 @@ const ptBR: Dictionary = {
     latestSubtitle: 'Os produtos mais recentes adicionados ao marketplace',
     whyBadge: 'Por que comprar aqui',
     whyTitle: 'Tudo o que você precisa, entregue na hora',
-    whyText: 'Todo produto é revisado antes de ir ao ar. Pague uma vez, baixe imediatamente e mantenha acesso vitalício na sua biblioteca.',
+    whyText:
+      'Todo produto é revisado antes de ir ao ar. Pague uma vez, baixe imediatamente e mantenha acesso vitalício na sua biblioteca.',
     why1: 'Acesso imediato após o pagamento',
     why2: 'Downloads vitalícios',
     why3: 'Processamento de pagamento seguro',
@@ -184,7 +186,8 @@ const ptBR: Dictionary = {
     badge: 'Para criadores',
     title1: 'Comece a vender seus',
     title2: 'produtos digitais',
-    subtitle: 'Escolha um plano, abra sua loja e publique. Cada anúncio é revisado pela nossa equipe antes de ir ao ar, e você mantém o controle dos seus ganhos.',
+    subtitle:
+      'Escolha um plano, abra sua loja e publique. Cada anúncio é revisado pela nossa equipe antes de ir ao ar, e você mantém o controle dos seus ganhos.',
     mostPopular: 'Mais popular',
     commission: '{pct} de comissão da plataforma por venda',
     listedProducts: '{count} produtos publicados',
@@ -205,7 +208,8 @@ const ptBR: Dictionary = {
     noAccount: 'Não tem conta?',
     createOne: 'Crie uma',
     loginSideTitle: 'Seus produtos digitais, em um só lugar.',
-    loginSideText: 'Compre uma vez e baixe para sempre, ou abra sua própria loja e comece a ganhar com o seu trabalho.',
+    loginSideText:
+      'Compre uma vez e baixe para sempre, ou abra sua própria loja e comece a ganhar com o seu trabalho.',
     loginBullet1: 'Downloads imediatos e protegidos',
     loginBullet2: 'Cada anúncio revisado pela nossa equipe',
     loginBullet3: 'Pagamentos seguros',
@@ -223,7 +227,8 @@ const ptBR: Dictionary = {
     registerSubmitSeller: 'Criar conta de vendedor',
     alreadyRegistered: 'Já tem cadastro?',
     registerSideTitle: 'Junte-se à nossa comunidade de criadores.',
-    registerSideText: 'Venda seus produtos digitais, alcance compradores no mundo todo e gerencie tudo em um painel.',
+    registerSideText:
+      'Venda seus produtos digitais, alcance compradores no mundo todo e gerencie tudo em um painel.',
     registerBullet1: 'Fique com a maior parte de cada venda',
     registerBullet2: 'Entrega automática após o pagamento',
     registerBullet3: 'Painel do vendedor fácil de usar',
@@ -251,7 +256,8 @@ const ptBR: Dictionary = {
     items: 'Itens',
     total: 'Total',
     placed: 'Feito em {date}',
-    pending: 'Aguardando confirmação do pagamento. Esta página é atualizada assim que o provedor confirmar.',
+    pending:
+      'Aguardando confirmação do pagamento. Esta página é atualizada assim que o provedor confirmar.',
     failed: 'O pagamento falhou. Você pode tentar novamente pelo carrinho.',
     failedReason: 'O pagamento falhou: {reason}. Você pode tentar novamente pelo carrinho.',
     confirmed: 'Pagamento confirmado. Seus arquivos estão prontos para download.',
@@ -300,7 +306,8 @@ const ptBR: Dictionary = {
     activeProducts: 'Produtos Ativos',
     approvedPending: 'Aprovados + em análise',
     recentOrders: 'Pedidos Recentes',
-    noSalesYet: 'Nenhuma venda ainda. Quando seus produtos forem aprovados e vendidos, os pedidos aparecem aqui.',
+    noSalesYet:
+      'Nenhuma venda ainda. Quando seus produtos forem aprovados e vendidos, os pedidos aparecem aqui.',
     currentPlan: 'Plano Atual',
     manage: 'Gerenciar',
     plan: 'Plano',
@@ -371,13 +378,15 @@ const ptBR: Dictionary = {
     planAtSale: 'Plano no momento da venda',
     backToOrders: 'Voltar aos pedidos',
     financeTitle: 'Ganhos',
-    financeDescription: 'Os ganhos são liberados para o saldo disponível após o período de retenção.',
+    financeDescription:
+      'Os ganhos são liberados para o saldo disponível após o período de retenção.',
     minWithdrawal: 'Saque mínimo {amount}',
     clearsAutomatically: 'Liberado automaticamente',
     requestWithdrawal: 'Solicitar saque',
     amountOptional: 'Valor (deixe em branco para o saldo total)',
     requestButton: 'Solicitar saque',
-    weeklyUsed: '{used} de {limit} solicitação(ões) semanal(is) usada(s). Saques aprovados são pagos na sua conta cadastrada.',
+    weeklyUsed:
+      '{used} de {limit} solicitação(ões) semanal(is) usada(s). Saques aprovados são pagos na sua conta cadastrada.',
     withdrawalsTitle: 'Saques',
     noWithdrawals: 'Nenhum saque ainda',
     requested: 'Solicitado em',
@@ -389,7 +398,8 @@ const ptBR: Dictionary = {
     type: 'Tipo',
     until: 'até {date}',
     planTitle: 'Seu plano',
-    planDescription: 'Os planos definem sua comissão, o limite de produtos e o número de saques por semana.',
+    planDescription:
+      'Os planos definem sua comissão, o limite de produtos e o número de saques por semana.',
     currentSubscription: 'Assinatura atual',
     cancelPlan: 'Cancelar plano',
     cancelConfirm: 'Cancelar seu plano? Você mantém o acesso até o fim do período atual.',
@@ -399,7 +409,8 @@ const ptBR: Dictionary = {
     choosePlanButton: 'Escolher plano',
     securePaymentPage: 'Você será levado a uma página de pagamento segura.',
     checkoutProcessing: 'Pagamento recebido. Seu plano será ativado em alguns segundos.',
-    checkoutCanceled: 'O pagamento foi cancelado. Você pode escolher um plano novamente quando quiser.',
+    checkoutCanceled:
+      'O pagamento foi cancelado. Você pode escolher um plano novamente quando quiser.',
     subscriptionPending: 'Sua assinatura do plano {plan} aguarda a confirmação do pagamento.',
     settingsTitle: 'Configurações da loja',
     profileSaved: 'Perfil da loja salvo',
@@ -445,7 +456,8 @@ const ptBR: Dictionary = {
     process: 'Processar',
     nothingPending: 'Nada pendente.',
     reviewTitle: 'Revisão de produtos',
-    reviewDescription: 'Aprove, rejeite ou bloqueie anúncios. Os vendedores veem o motivo da rejeição.',
+    reviewDescription:
+      'Aprove, rejeite ou bloqueie anúncios. Os vendedores veem o motivo da rejeição.',
     searchTitleStore: 'Buscar título ou loja',
     noProductsView: 'Nenhum produto nesta visualização',
     vendor: 'Vendedor',
@@ -467,16 +479,20 @@ const ptBR: Dictionary = {
     open: 'Abrir',
     tags: 'Tags',
     withdrawalsTitle: 'Saques',
-    manualDescription: 'Repasse manual: aprove, envie o valor por PIX ou transferência e marque o saque como pago.',
-    gatewayDescription: 'Repasse pelo gateway: a aprovação dispara uma transferência pelo provedor de pagamento.',
+    manualDescription:
+      'Repasse manual: aprove, envie o valor por PIX ou transferência e marque o saque como pago.',
+    gatewayDescription:
+      'Repasse pelo gateway: a aprovação dispara uma transferência pelo provedor de pagamento.',
     noWithdrawalsView: 'Nenhum saque nesta visualização',
     payoutTo: 'Pagar para',
-    approveManualConfirm: 'Aprovar {amount} para {vendor}? Depois você enviará o valor manualmente e marcará como pago.',
+    approveManualConfirm:
+      'Aprovar {amount} para {vendor}? Depois você enviará o valor manualmente e marcará como pago.',
     approveGatewayConfirm: 'Aprovar e transferir {amount} para {vendor} pelo gateway de pagamento?',
     approveAndPay: 'Aprovar e pagar',
     markPaid: 'Marcar como pago',
     markPaidTitle: 'Marcar saque como pago',
-    markPaidText: 'Confirme que você enviou {amount} para {vendor}. O vendedor verá o saque como pago.',
+    markPaidText:
+      'Confirme que você enviou {amount} para {vendor}. O vendedor verá o saque como pago.',
     reference: 'Referência da transação (opcional)',
     referenceHint: 'ID end-to-end do PIX ou número do comprovante',
     notes: 'Observações (opcional)',
@@ -527,7 +543,8 @@ const ptBR: Dictionary = {
     availableForNew: 'Disponível para novas assinaturas',
     subscribers: 'Assinantes',
     deactivate: 'Desativar',
-    deactivateConfirm: 'Desativar {name}? Assinantes atuais mantêm o plano; novos vendedores não poderão escolhê-lo.',
+    deactivateConfirm:
+      'Desativar {name}? Assinantes atuais mantêm o plano; novos vendedores não poderão escolhê-lo.',
     categoriesTitle: 'Categorias',
     newCategory: 'Nova categoria',
     editCategory: 'Editar categoria',
@@ -551,7 +568,8 @@ const ptBR: Dictionary = {
     defaultCommission: 'Comissão padrão (%)',
     defaultCommissionHint: 'Aplicada quando o vendedor não tem plano',
     payoutMode: 'Modo de repasse',
-    payoutModeHint: 'Manual: você envia PIX/transferência e marca os saques como pagos. Gateway: transferências pelo provedor de pagamento.',
+    payoutModeHint:
+      'Manual: você envia PIX/transferência e marca os saques como pagos. Gateway: transferências pelo provedor de pagamento.',
     payoutManual: 'Manual (PIX / transferência pelo admin)',
     payoutGateway: 'Gateway (transferência automática)',
     maxUpload: 'Tamanho máximo de upload (MB)',

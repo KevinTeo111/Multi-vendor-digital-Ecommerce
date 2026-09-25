@@ -1,21 +1,10 @@
 import { Body, Controller, Get, Param, Patch, Query } from '@nestjs/common';
-import { Role, UserStatus } from '@prisma/client';
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { Role } from '@prisma/client';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { PaginationDto } from '../../common/dto/pagination.dto';
 import { AuditService } from '../audit/audit.service';
+import { ListUsersQuery, SetUserStatusDto } from './dto/users.dto';
 import { UsersService } from './users.service';
-
-class ListUsersQuery extends PaginationDto {
-  @IsOptional() @IsEnum(Role) role?: Role;
-  @IsOptional() @IsEnum(UserStatus) status?: UserStatus;
-  @IsOptional() @IsString() search?: string;
-}
-
-class SetUserStatusDto {
-  @IsEnum(UserStatus) status: UserStatus;
-}
 
 @Controller('admin/users')
 @Roles(Role.ADMIN)

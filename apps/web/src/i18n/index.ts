@@ -20,10 +20,18 @@ type Params = Record<string, string | number>;
 
 /** Dot-path lookup with `{param}` interpolation. Missing keys return the key itself so they are easy to spot. */
 export function translate(dict: Dictionary, key: string, params?: Params): string {
-  const value = key.split('.').reduce<unknown>((acc, part) => (acc && typeof acc === 'object' ? (acc as Record<string, unknown>)[part] : undefined), dict);
+  const value = key
+    .split('.')
+    .reduce<unknown>(
+      (acc, part) =>
+        acc && typeof acc === 'object' ? (acc as Record<string, unknown>)[part] : undefined,
+      dict,
+    );
   if (typeof value !== 'string') return key;
   if (!params) return value;
-  return value.replace(/\{(\w+)\}/g, (_, name: string) => (params[name] !== undefined ? String(params[name]) : `{${name}}`));
+  return value.replace(/\{(\w+)\}/g, (_, name: string) =>
+    params[name] !== undefined ? String(params[name]) : `{${name}}`,
+  );
 }
 
 export type Translate = (key: string, params?: Params) => string;
@@ -36,7 +44,12 @@ export function makeT(locale: Locale): Translate {
 /** Human-readable status label, falling back to a title-cased version of the raw value. */
 export function statusLabelFor(t: Translate, status: string) {
   const label = t(`status.${status}`);
-  return label === `status.${status}` ? status.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()) : label;
+  return label === `status.${status}`
+    ? status
+        .replace(/_/g, ' ')
+        .toLowerCase()
+        .replace(/\b\w/g, (c) => c.toUpperCase())
+    : label;
 }
 
 export const LOCALE_NAMES: Record<Locale, string> = { 'pt-BR': 'Português', en: 'English' };
