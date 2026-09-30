@@ -257,7 +257,7 @@ const ptBR: Dictionary = {
     total: 'Total',
     placed: 'Feito em {date}',
     pending:
-      'Aguardando confirmação do pagamento. Esta página é atualizada assim que o provedor confirmar.',
+      'Aguardando confirmação do pagamento. Se você escolheu Pix ou boleto, conclua o pagamento no app do seu banco; esta página é atualizada automaticamente assim que for confirmado.',
     failed: 'O pagamento falhou. Você pode tentar novamente pelo carrinho.',
     failedReason: 'O pagamento falhou: {reason}. Você pode tentar novamente pelo carrinho.',
     confirmed: 'Pagamento confirmado. Seus arquivos estão prontos para download.',

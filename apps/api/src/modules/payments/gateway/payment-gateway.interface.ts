@@ -21,6 +21,8 @@ export interface CreateCheckoutInput {
   items: Array<{ description: string; amountCents: number; quantity: number }>;
   successUrl: string;
   cancelUrl: string;
+  /** Where to send the buyer when the provider accepted the order but the money is still on its way (Pix / boleto). */
+  pendingUrl?: string;
 }
 
 export interface CheckoutResult {
@@ -108,11 +110,12 @@ export type NormalizedWebhookEvent =
   | { kind: 'ignored'; eventId: string; type: string };
 
 export type WebhookHeaders = Record<string, string | string[] | undefined>;
+export type WebhookQuery = Record<string, unknown>;
 
 export class WebhookRejectedError extends Error {}
 
 export interface PaymentGateway {
-  readonly name: 'mock' | 'stripe';
+  readonly name: 'mock' | 'stripe' | 'mercadopago';
   /** Whether createRecipient/createTransfer are implemented. Manual payout mode works regardless. */
   readonly supportsPayouts: boolean;
 
@@ -130,5 +133,9 @@ export interface PaymentGateway {
    * Authenticates the request (signature / credentials) and normalizes the event.
    * Throws WebhookRejectedError when the request cannot be attributed to the provider.
    */
-  parseWebhook(rawBody: Buffer, headers: WebhookHeaders): Promise<NormalizedWebhookEvent>;
+  parseWebhook(
+    rawBody: Buffer,
+    headers: WebhookHeaders,
+    query?: WebhookQuery,
+  ): Promise<NormalizedWebhookEvent>;
 }

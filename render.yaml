@@ -51,7 +51,11 @@ services:
       - key: DOWNLOAD_URL_TTL_SECONDS
         value: 300
       - key: PAYMENT_GATEWAY
-        value: mock # "stripe" once STRIPE_* are set
+        value: mock # "mercadopago" once MP_* are set ("stripe" is kept as an alternative)
+      - key: MP_ACCESS_TOKEN
+        sync: false
+      - key: MP_WEBHOOK_SECRET
+        sync: false
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: STRIPE_WEBHOOK_SECRET

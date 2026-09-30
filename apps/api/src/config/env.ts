@@ -31,9 +31,11 @@ const schema = z.object({
   S3_FORCE_PATH_STYLE: z.coerce.boolean().default(false),
   DOWNLOAD_URL_TTL_SECONDS: z.coerce.number().int().positive().default(300),
 
-  PAYMENT_GATEWAY: z.enum(['mock', 'stripe']).default('mock'),
+  PAYMENT_GATEWAY: z.enum(['mock', 'stripe', 'mercadopago']).default('mock'),
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  MP_ACCESS_TOKEN: z.string().optional(),
+  MP_WEBHOOK_SECRET: z.string().optional(),
 });
 
 const parsed = schema.safeParse(process.env);

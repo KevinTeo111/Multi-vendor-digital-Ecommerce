@@ -126,6 +126,7 @@ export class CheckoutService {
           quantity: 1,
         })),
         successUrl: `${primaryWebUrl}/orders/${order.id}?status=success`,
+        pendingUrl: `${primaryWebUrl}/orders/${order.id}?status=pending`,
         cancelUrl: `${primaryWebUrl}/cart?status=canceled`,
       });
     } catch (err) {
@@ -269,6 +270,7 @@ export function generateOrderNumber(now = new Date()) {
 const PAYMENT_METHOD_BY_NAME: Record<string, PaymentMethod> = {
   card: PaymentMethod.CREDIT_CARD,
   credit_card: PaymentMethod.CREDIT_CARD,
+  debit_card: PaymentMethod.CREDIT_CARD,
   pix: PaymentMethod.PIX,
   boleto: PaymentMethod.BOLETO,
 };

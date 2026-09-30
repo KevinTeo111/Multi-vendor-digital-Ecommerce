@@ -8,6 +8,7 @@ import {
   PAYMENT_GATEWAY,
   PaymentGateway,
   WebhookHeaders,
+  WebhookQuery,
   WebhookRejectedError,
 } from '../payments/gateway/payment-gateway.interface';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
@@ -24,10 +25,10 @@ export class WebhooksService {
     @Inject(PAYMENT_GATEWAY) private readonly gateway: PaymentGateway,
   ) {}
 
-  async handle(rawBody: Buffer, headers: WebhookHeaders) {
+  async handle(rawBody: Buffer, headers: WebhookHeaders, query: WebhookQuery = {}) {
     let event: NormalizedWebhookEvent;
     try {
-      event = await this.gateway.parseWebhook(rawBody, headers);
+      event = await this.gateway.parseWebhook(rawBody, headers, query);
     } catch (err) {
       if (err instanceof WebhookRejectedError) {
         this.logger.warn(`Webhook rejected: ${err.message}`);

@@ -134,7 +134,7 @@ the command resets the demo accounts.
 ```bash
 npm run format:check        # Prettier (npm run format to fix)
 npm run typecheck           # all workspaces
-npm test -w apps/api        # unit tests (money, withdrawal rules, product lifecycle, settings, pagination, Stripe webhooks, module wiring)
+npm test -w apps/api        # unit tests (money, withdrawal rules, product lifecycle, settings, pagination, Stripe + Mercado Pago webhooks, module wiring)
 npm run build               # all workspaces
 ```
 
@@ -170,6 +170,36 @@ Conventions that keep the code easy to change:
 ## Payment gateway
 
 `PAYMENT_GATEWAY=mock` (default) completes every payment, subscription and transfer instantly.
+The adapters live in `apps/api/src/modules/payments/gateway/` behind one `PaymentGateway` interface;
+the rest of the API never imports a provider SDK.
+
+### Mercado Pago (production choice: Pix from day one)
+
+`PAYMENT_GATEWAY=mercadopago` uses `mercadopago.gateway.ts` (REST API through `fetch`, no SDK):
+
+- Orders use Checkout Pro. A Preference is created with the order number as `external_reference`
+  and the buyer is redirected to `init_point`; Pix, card, boleto and account money are whatever the
+  Mercado Pago account offers. Preferences expire after 24 h so Pix/boleto have time to be paid.
+- Webhooks are pointers (`type` + `data.id`). The adapter validates `x-signature`
+  (HMAC-SHA256 of `id:<data.id>;request-id:<x-request-id>;ts:<ts>;` with `MP_WEBHOOK_SECRET`),
+  then fetches the payment: `approved` marks the order paid, `rejected` / `cancelled` mark it
+  failed, anything else is ignored. The same payment id is notified several times as it moves from
+  pending to approved, so stored event ids are `payment:<id>:<status>`.
+- Paid plans use a preapproval plan per marketplace plan (`syncPlan`) and a preapproval per
+  subscription; `subscription_preapproval` (authorized / paused / cancelled) and
+  `subscription_authorized_payment` (renewals) drive the local status. Cancelling sets the
+  preapproval to `cancelled`; local entitlement keeps access until the paid period ends.
+- Payouts stay manual. Automated split payouts would use Mercado Pago marketplace mode (Phase 2).
+- Panel setup: application (Checkout Pro, Preferences API) → test credentials → test accounts
+  (one seller, one buyer) → Webhooks, test mode, URL `https://<api-host>/api/webhooks/payments`,
+  events **Payments** and **Plans and subscriptions**. Sandbox Pix and boleto payments stay pending
+  forever; use the test card with holder name `APRO` to exercise the paid path.
+
+Required variables: `MP_ACCESS_TOKEN` (`TEST-…` / `APP_USR-…`), `MP_WEBHOOK_SECRET`, and
+`API_URL` (used to build `notification_url`).
+
+### Stripe (kept as an alternative; Pix is invite-only for Brazilian accounts)
+
 `PAYMENT_GATEWAY=stripe` uses `apps/api/src/modules/payments/gateway/stripe.gateway.ts`:
 
 - Orders use Stripe Checkout in payment mode. Payment methods are whatever is enabled in the Stripe

@@ -256,7 +256,7 @@ const en = {
     total: 'Total',
     placed: 'Placed {date}',
     pending:
-      'Waiting for payment confirmation. This page updates once the payment provider confirms.',
+      'Waiting for payment confirmation. If you chose Pix or boleto, finish the payment in your bank app; this page updates automatically once it is confirmed.',
     failed: 'Payment failed. You can try again from your cart.',
     failedReason: 'Payment failed: {reason}. You can try again from your cart.',
     confirmed: 'Payment confirmed. Your files are ready to download.',

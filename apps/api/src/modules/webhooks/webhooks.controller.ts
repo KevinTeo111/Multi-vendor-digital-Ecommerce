@@ -12,14 +12,14 @@ export class WebhooksController {
   constructor(private readonly webhooks: WebhooksService) {}
 
   /**
-   * Payment provider callback. The gateway adapter authenticates the request against the raw body
-   * (Stripe signature); the event is then stored and processed exactly once.
+   * Payment provider callback. The gateway adapter authenticates the request (Stripe signs the raw
+   * body, Mercado Pago signs the query-string id); the event is then stored and processed once.
    */
   @Public()
   @Post('payments')
   @HttpCode(200)
   payments(@Req() req: RawBodyRequest) {
     const raw = req.rawBody ?? Buffer.from(JSON.stringify(req.body ?? {}));
-    return this.webhooks.handle(raw, req.headers);
+    return this.webhooks.handle(raw, req.headers, req.query as Record<string, unknown>);
   }
 }
