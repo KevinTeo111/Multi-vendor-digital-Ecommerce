@@ -264,6 +264,7 @@ export class MercadoPagoPaymentGateway implements PaymentGateway {
     let body: {
       type?: string;
       topic?: string;
+      resource?: string;
       action?: string;
       data?: { id?: string | number };
     } = {};
@@ -280,9 +281,10 @@ export class MercadoPagoPaymentGateway implements PaymentGateway {
     if (!HANDLED_TOPICS.has(type))
       return { kind: 'ignored', eventId: `${type || 'unknown'}:${randomUUID()}`, type };
 
-    // The signed id is the one from the query string; the body carries the same value.
-    const queryId = query['data.id'];
-    const dataId = String(queryId ?? body.data?.id ?? '');
+    // The signed id is the one from the query string (`data.id`); the legacy format sends it as
+    // `id` (and as the tail of `resource` in the body).
+    const legacyResourceId = body.resource?.split('/').pop();
+    const dataId = String(query['data.id'] ?? body.data?.id ?? query.id ?? legacyResourceId ?? '');
     this.verifySignature(headers, dataId);
 
     switch (type) {

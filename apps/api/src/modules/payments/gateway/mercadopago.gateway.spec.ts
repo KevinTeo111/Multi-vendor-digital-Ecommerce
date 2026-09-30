@@ -152,6 +152,25 @@ describe('MercadoPagoPaymentGateway checkout', () => {
 });
 
 describe('MercadoPagoPaymentGateway webhooks', () => {
+  it('accepts the legacy topic/id format when the signature covers the id', async () => {
+    const { gw } = gateway({
+      'GET /v1/payments/42': { id: 42, status: 'approved', external_reference: 'ORD-L' },
+    });
+    const ts = String(Math.floor(NOW / 1000));
+    const v1 = signManifest(signatureManifest({ dataId: '42', requestId: 'r-1', ts }), SECRET);
+    const raw = Buffer.from(JSON.stringify({ resource: '/v1/payments/42', topic: 'payment' }));
+    await expect(
+      gw.parseWebhook(
+        raw,
+        { 'x-signature': `ts=${ts},v1=${v1}`, 'x-request-id': 'r-1' },
+        {
+          topic: 'payment',
+          id: '42',
+        },
+      ),
+    ).resolves.toMatchObject({ kind: 'order.paid', gatewayOrderId: 'ORD-L', chargeId: '42' });
+  });
+
   it('rejects missing, forged and stale signatures', async () => {
     const { gw } = gateway();
     const ok = signed('payment', '1');
