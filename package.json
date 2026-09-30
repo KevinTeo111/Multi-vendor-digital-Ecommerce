@@ -21,6 +21,7 @@
     "db:deploy": "dotenv -e .env -- npm run migrate:apply -w apps/api",
     "db:seed": "dotenv -e .env -- npm run prisma:seed -w apps/api",
     "db:seed:demo": "dotenv -e .env -- npm run prisma:seed:demo -w apps/api",
+    "db:reset-buyer-orders": "dotenv -e .env -- npm run prisma:reset-buyer-orders -w apps/api --",
     "db:studio": "dotenv -e .env -- npm run prisma:studio -w apps/api",
     "infra:up": "docker compose up -d",
     "infra:down": "docker compose down"
