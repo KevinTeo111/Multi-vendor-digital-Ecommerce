@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { env, primaryWebUrl } from '../../../config/env';
 import {
+  CHECKOUT_TTL_MS,
   CheckoutResult,
   CreateCheckoutInput,
   CreateSubscriptionInput,
@@ -82,8 +83,9 @@ interface MpAuthorizedPayment {
 }
 
 const DEFAULT_API_URL = 'https://api.mercadopago.com';
-const CHECKOUT_TTL_MS = 24 * 60 * 60 * 1000; // Pix and boleto need time to be paid
+const SETTLEMENT_CURRENCY = 'BRL'; // Brazilian accounts charge in BRL only
 const DEFAULT_SIGNATURE_TOLERANCE_MS = 60 * 60 * 1000;
+const FINAL_FAILURE_STATUSES = new Set(['rejected', 'cancelled']);
 const HANDLED_TOPICS = new Set([
   'payment',
   'subscription_preapproval',
@@ -157,6 +159,7 @@ export class MercadoPagoPaymentGateway implements PaymentGateway {
   // ---- Checkout ----------------------------------------------------------
 
   async createCheckout(input: CreateCheckoutInput): Promise<CheckoutResult> {
+    assertCurrency(input.currency);
     const now = this.now();
     const preference = await this.request<MpPreference>('POST', '/checkout/preferences', {
       items: input.items.map((item, index) => ({
@@ -193,6 +196,7 @@ export class MercadoPagoPaymentGateway implements PaymentGateway {
 
   /** Creates a preapproval plan for the marketplace plan, reusing the existing one when it still matches. */
   async syncPlan(plan: PlanLike): Promise<{ gatewayPlanId: string }> {
+    assertCurrency(plan.currency);
     const recurring = {
       frequency: plan.interval === 'YEAR' ? 12 : 1,
       frequency_type: 'months',
@@ -279,13 +283,21 @@ export class MercadoPagoPaymentGateway implements PaymentGateway {
     // Topics we never act on (merchant_order, …) are dropped before verification: no state changes,
     // and answering 200 stops Mercado Pago from retrying them every 15 minutes.
     if (!HANDLED_TOPICS.has(type))
-      return { kind: 'ignored', eventId: `${type || 'unknown'}:${randomUUID()}`, type };
+      return {
+        kind: 'ignored',
+        eventId: `${type || 'unknown'}:${randomUUID()}`,
+        type,
+        unverified: true,
+      };
 
-    // The signed id is the one from the query string (`data.id`); the legacy format sends it as
-    // `id` (and as the tail of `resource` in the body).
-    const legacyResourceId = body.resource?.split('/').pop();
-    const dataId = String(query['data.id'] ?? body.data?.id ?? query.id ?? legacyResourceId ?? '');
-    this.verifySignature(headers, dataId);
+    // The signed id is the one from the query string (`data.id`). The legacy format sends it as
+    // `id` (and as the tail of `resource` in the body) and may or may not include it in the
+    // signature, so both manifests are accepted for that format.
+    const modernId = query['data.id'] ?? body.data?.id;
+    const legacyId = query.id ?? body.resource?.split('/').pop();
+    const dataId = String(modernId ?? legacyId ?? '');
+    const candidates = modernId !== undefined ? [dataId] : [dataId, ''];
+    this.verifySignature(headers, candidates);
 
     switch (type) {
       case 'payment':
@@ -299,7 +311,8 @@ export class MercadoPagoPaymentGateway implements PaymentGateway {
     }
   }
 
-  private verifySignature(headers: WebhookHeaders, dataId: string) {
+  /** Validates `x-signature` against every candidate id (one normally; two for the legacy format). */
+  private verifySignature(headers: WebhookHeaders, dataIds: string[]) {
     const signature = single(headers['x-signature']);
     if (!signature) throw new WebhookRejectedError('Missing x-signature header');
     const parts = Object.fromEntries(
@@ -312,18 +325,20 @@ export class MercadoPagoPaymentGateway implements PaymentGateway {
     const v1 = parts.v1;
     if (!ts || !v1) throw new WebhookRejectedError('Malformed x-signature header');
 
-    const manifest = signatureManifest({
-      dataId: dataId || undefined,
-      requestId: single(headers['x-request-id']),
-      ts,
-    });
-    const expectedHex = signManifest(manifest, this.webhookSecret!);
-    const expected = Buffer.from(expectedHex, 'hex');
+    const requestId = single(headers['x-request-id']);
     const given = Buffer.from(v1, 'hex');
-    if (expected.length !== given.length || !timingSafeEqual(expected, given)) {
+    const manifests = [...new Set(dataIds)].map((dataId) =>
+      signatureManifest({ dataId: dataId || undefined, requestId, ts }),
+    );
+    const matched = manifests.some((manifest) => {
+      const expected = Buffer.from(signManifest(manifest, this.webhookSecret!), 'hex');
+      return expected.length === given.length && timingSafeEqual(expected, given);
+    });
+    if (!matched) {
       // Hash prefixes are safe to log and tell a wrong secret apart from a wrong manifest.
+      const expectedHex = signManifest(manifests[0], this.webhookSecret!);
       throw new WebhookRejectedError(
-        `Invalid Mercado Pago signature (manifest="${manifest}", expected=${expectedHex.slice(0, 8)}…, given=${v1.slice(0, 8)}…)`,
+        `Invalid Mercado Pago signature (manifest="${manifests[0]}", expected=${expectedHex.slice(0, 8)}…, given=${v1.slice(0, 8)}…)`,
       );
     }
 
@@ -413,6 +428,43 @@ export class MercadoPagoPaymentGateway implements PaymentGateway {
     return { kind: 'ignored', eventId, type: `authorized_payment:${paymentStatus}` };
   }
 
+  // ---- Reconciliation (lost webhooks) ------------------------------------
+
+  /** Payments carrying the order number as `external_reference`, newest first. */
+  async lookupOrder(gatewayOrderId: string): Promise<NormalizedWebhookEvent | null> {
+    const page = await this.request<{ results?: MpPayment[] }>(
+      'GET',
+      `/v1/payments/search?external_reference=${encodeURIComponent(gatewayOrderId)}&sort=date_created&criteria=desc`,
+    );
+    const payments = page.results ?? [];
+    const approved = payments.find((p) => p.status === 'approved');
+    if (approved) {
+      return {
+        kind: 'order.paid',
+        eventId: `payment:${approved.id}:approved`,
+        gatewayOrderId,
+        chargeId: String(approved.id),
+        paymentMethod: normalizePaymentMethod(approved),
+      };
+    }
+    const open = payments.some((p) => !FINAL_FAILURE_STATUSES.has(p.status));
+    if (payments.length > 0 && !open) {
+      const latest = payments[0];
+      return {
+        kind: 'order.failed',
+        eventId: `payment:${latest.id}:${latest.status}`,
+        gatewayOrderId,
+        reason: latest.status_detail ?? latest.status,
+      };
+    }
+    return null; // no attempt yet, or still pending / in process
+  }
+
+  async lookupSubscription(gatewaySubscriptionId: string): Promise<NormalizedWebhookEvent | null> {
+    const event = await this.preapprovalEvent(gatewaySubscriptionId);
+    return event.kind === 'ignored' ? null : event;
+  }
+
   // ---- HTTP --------------------------------------------------------------
 
   private async request<T>(method: 'GET' | 'POST' | 'PUT', path: string, body?: unknown) {
@@ -450,6 +502,13 @@ export class MercadoPagoPaymentGateway implements PaymentGateway {
       throw new Error(`Mercado Pago GET ${path} failed (${res.status}): ${text.slice(0, 500)}`);
     return JSON.parse(text) as T;
   }
+}
+
+function assertCurrency(currency: string) {
+  if (currency.toUpperCase() !== SETTLEMENT_CURRENCY)
+    throw new Error(
+      `Mercado Pago accounts in Brazil charge in ${SETTLEMENT_CURRENCY}; the site currency is ${currency}`,
+    );
 }
 
 function single(value: string | string[] | undefined): string | undefined {

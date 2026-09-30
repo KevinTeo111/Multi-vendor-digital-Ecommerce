@@ -30,7 +30,8 @@ export class OrdersController {
   }
 
   @Get('orders/:id')
-  get(@CurrentUser('id') userId: string, @Param('id') id: string) {
+  async get(@CurrentUser('id') userId: string, @Param('id') id: string) {
+    await this.checkoutService.reconcile(id, userId);
     return this.orders.getForBuyer(userId, id);
   }
 

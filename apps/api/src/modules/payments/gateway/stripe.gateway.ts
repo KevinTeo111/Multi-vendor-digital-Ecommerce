@@ -132,6 +132,21 @@ export class StripePaymentGateway implements PaymentGateway {
     throw new Error('Automated payouts are not enabled for Stripe; use manual payout mode');
   }
 
+  // ---- Reconciliation (lost webhooks) ------------------------------------
+
+  async lookupOrder(gatewayOrderId: string): Promise<NormalizedWebhookEvent | null> {
+    const session = await this.stripe.checkout.sessions.retrieve(gatewayOrderId);
+    if (session.payment_status === 'paid') return this.paid(`lookup:${session.id}:paid`, session);
+    if (session.status === 'expired')
+      return {
+        kind: 'order.failed',
+        eventId: `lookup:${session.id}:expired`,
+        gatewayOrderId: session.id,
+        reason: 'Checkout expired',
+      };
+    return null;
+  }
+
   // ---- Webhooks ----------------------------------------------------------
 
   async parseWebhook(rawBody: Buffer, headers: WebhookHeaders): Promise<NormalizedWebhookEvent> {

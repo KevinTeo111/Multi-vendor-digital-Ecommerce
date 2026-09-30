@@ -151,7 +151,111 @@ describe('MercadoPagoPaymentGateway checkout', () => {
   });
 });
 
+describe('MercadoPagoPaymentGateway reconciliation', () => {
+  it('finds an approved payment by order number', async () => {
+    const { gw, calls } = gateway({
+      'GET /v1/payments/search?external_reference=ORD-9&sort=date_created&criteria=desc': {
+        results: [
+          { id: 2, status: 'approved', external_reference: 'ORD-9', payment_method_id: 'pix' },
+          { id: 1, status: 'rejected', external_reference: 'ORD-9' },
+        ],
+      },
+    });
+    await expect(gw.lookupOrder('ORD-9')).resolves.toEqual({
+      kind: 'order.paid',
+      eventId: 'payment:2:approved',
+      gatewayOrderId: 'ORD-9',
+      chargeId: '2',
+      paymentMethod: 'pix',
+    });
+    expect(calls[0].path).toContain('external_reference=ORD-9');
+  });
+
+  it('reports failure only when every attempt is final, otherwise nothing', async () => {
+    const { gw } = gateway({
+      'GET /v1/payments/search?external_reference=ORD-F&sort=date_created&criteria=desc': {
+        results: [{ id: 5, status: 'rejected', status_detail: 'cc_rejected_bad_filled_cvv' }],
+      },
+      'GET /v1/payments/search?external_reference=ORD-P&sort=date_created&criteria=desc': {
+        results: [
+          { id: 6, status: 'in_process' },
+          { id: 7, status: 'rejected' },
+        ],
+      },
+      'GET /v1/payments/search?external_reference=ORD-N&sort=date_created&criteria=desc': {
+        results: [],
+      },
+    });
+    await expect(gw.lookupOrder('ORD-F')).resolves.toMatchObject({
+      kind: 'order.failed',
+      reason: 'cc_rejected_bad_filled_cvv',
+    });
+    await expect(gw.lookupOrder('ORD-P')).resolves.toBeNull();
+    await expect(gw.lookupOrder('ORD-N')).resolves.toBeNull();
+  });
+
+  it('looks up a subscription and maps it like a webhook', async () => {
+    const { gw } = gateway({
+      'GET /preapproval/pre_9': { id: 'pre_9', status: 'authorized' },
+      'GET /preapproval/pre_0': { id: 'pre_0', status: 'pending' },
+    });
+    await expect(gw.lookupSubscription('pre_9')).resolves.toMatchObject({
+      kind: 'subscription.activated',
+      gatewaySubscriptionId: 'pre_9',
+    });
+    await expect(gw.lookupSubscription('pre_0')).resolves.toBeNull();
+  });
+
+  it('refuses non-BRL amounts with a clear message', async () => {
+    const { gw } = gateway();
+    await expect(
+      gw.createCheckout({
+        orderId: 'o',
+        orderNumber: 'ORD-USD',
+        amountCents: 100,
+        currency: 'USD',
+        customer: { id: 'u', name: 'n', email: 'e@x.com' },
+        items: [{ description: 'x', amountCents: 100, quantity: 1 }],
+        successUrl: 'https://s',
+        cancelUrl: 'https://c',
+      }),
+    ).rejects.toThrow(/charge in BRL/);
+  });
+});
+
 describe('MercadoPagoPaymentGateway webhooks', () => {
+  it('accepts the legacy format whether or not the id was signed', async () => {
+    const { gw } = gateway({
+      'GET /v1/payments/43': { id: 43, status: 'approved', external_reference: 'ORD-L2' },
+    });
+    const ts = String(Math.floor(NOW / 1000));
+    const withoutId = signManifest(signatureManifest({ requestId: 'r-2', ts }), SECRET);
+    const raw = Buffer.from(JSON.stringify({ resource: '/v1/payments/43', topic: 'payment' }));
+    await expect(
+      gw.parseWebhook(
+        raw,
+        { 'x-signature': `ts=${ts},v1=${withoutId}`, 'x-request-id': 'r-2' },
+        {
+          topic: 'payment',
+          id: '43',
+        },
+      ),
+    ).resolves.toMatchObject({ kind: 'order.paid', gatewayOrderId: 'ORD-L2' });
+  });
+
+  it('drops unhandled topics as unverified so they are never persisted', async () => {
+    const { gw } = gateway();
+    const raw = Buffer.from(
+      JSON.stringify({ topic: 'merchant_order', resource: '/merchant_orders/1' }),
+    );
+    await expect(
+      gw.parseWebhook(raw, {}, { topic: 'merchant_order', id: '1' }),
+    ).resolves.toMatchObject({
+      kind: 'ignored',
+      unverified: true,
+    });
+  });
+
   it('accepts the legacy topic/id format when the signature covers the id', async () => {
     const { gw } = gateway({
       'GET /v1/payments/42': { id: 42, status: 'approved', external_reference: 'ORD-L' },

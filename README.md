@@ -190,10 +190,23 @@ the rest of the API never imports a provider SDK.
   `subscription_authorized_payment` (renewals) drive the local status. Cancelling sets the
   preapproval to `cancelled`; local entitlement keeps access until the paid period ends.
 - Payouts stay manual. Automated split payouts would use Mercado Pago marketplace mode (Phase 2).
+- Lost webhooks are not fatal: reading a PENDING order (`GET /orders/:id`) or a pending seller
+  subscription asks Mercado Pago for the current state (`GET /v1/payments/search` by order number,
+  `GET /preapproval/:id`) and applies it through the same transitions a webhook would. An order with
+  no payment attempt after the 24 h checkout window is marked failed ("Checkout expired"). The paid
+  transition is a compare-and-set, so a webhook and a reconciliation racing each other cannot credit
+  the ledger twice. The buyer's order page re-reads every 15 s while pending.
+- Sandbox specifics: Mercado Pago's *test credentials* belong to a second application owned by the
+  Seller Test User (its number is shown under "Test credentials data"). Notifications for test
+  payments are signed with **that** application's webhook secret, so configure the webhook URL and
+  copy the secret from the seller test user's own developer panel, and leave the main application's
+  test-mode notifications empty to avoid duplicate deliveries signed with the other key. Buyers must
+  be logged in as the Buyer Test User; Pix and boleto stay pending forever; the test card with holder
+  name `APRO` approves, `FUND` rejects, `OTHE` may go to review (in process).
 - Panel setup: application (Checkout Pro, Preferences API) → test credentials → test accounts
-  (one seller, one buyer) → Webhooks, test mode, URL `https://<api-host>/api/webhooks/payments`,
-  events **Payments** and **Plans and subscriptions**. Sandbox Pix and boleto payments stay pending
-  forever; use the test card with holder name `APRO` to exercise the paid path.
+  (one seller, one buyer) → Webhooks (in the seller test user's application for the sandbox, in the
+  main application's production mode for go-live), URL `https://<api-host>/api/webhooks/payments`,
+  events **Payments** and **Plans and subscriptions**.
 
 Required variables: `MP_ACCESS_TOKEN` (`TEST-…` / `APP_USR-…`), `MP_WEBHOOK_SECRET`, and
 `API_URL` (used to build `notification_url`).

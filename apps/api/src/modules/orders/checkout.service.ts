@@ -18,8 +18,12 @@ import { RealtimeService } from '../realtime/realtime.service';
 import { SettingsService } from '../settings/settings.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { OrdersService } from './orders.service';
+import { decideReconciliation } from './reconciliation';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Orders still waiting for the provider; a late payment on a FAILED order is honoured too. */
+const PAYABLE_STATUSES: OrderStatus[] = [OrderStatus.PENDING, OrderStatus.FAILED];
 
 /**
  * Owns the money side of an order: creating it from the cart with commission snapshots,
@@ -158,14 +162,10 @@ export class CheckoutService {
     const availableAt = new Date(Date.now() + holdDays * DAY_MS);
 
     const paid = await this.prisma.$transaction(async (tx) => {
-      const order = await tx.order.findUnique({ where: { id: orderId }, include: { items: true } });
-      if (!order) throw new NotFoundException('Order not found');
-      if (order.status === OrderStatus.PAID) return null; // duplicate webhook
-      if (order.status !== OrderStatus.PENDING)
-        this.logger.warn(`Order ${order.orderNumber} received payment while ${order.status}`);
-
-      await tx.order.update({
-        where: { id: orderId },
+      // Compare-and-set: exactly one caller (webhook, retry or reconciliation) wins the transition,
+      // so ledger entries are never written twice even under concurrent confirmations.
+      const claimed = await tx.order.updateMany({
+        where: { id: orderId, status: { in: PAYABLE_STATUSES } },
         data: {
           status: OrderStatus.PAID,
           paidAt: new Date(),
@@ -173,6 +173,15 @@ export class CheckoutService {
           paymentMethod: info.paymentMethod,
           failureReason: null,
         },
+      });
+      if (claimed.count === 0) {
+        const exists = await tx.order.findUnique({ where: { id: orderId }, select: { id: true } });
+        if (!exists) throw new NotFoundException('Order not found');
+        return null; // already PAID (duplicate confirmation) or not payable (canceled / refunded)
+      }
+      const order = await tx.order.findUniqueOrThrow({
+        where: { id: orderId },
+        include: { items: true },
       });
 
       for (const item of order.items) {
@@ -251,6 +260,37 @@ export class CheckoutService {
       chargeId: info.chargeId,
       paymentMethod: toPaymentMethod(info.paymentMethod),
     });
+  }
+
+  /**
+   * Safety net for lost webhooks: for a PENDING order, asks the provider what happened and applies
+   * the answer through the same transitions a webhook would. Never throws; a provider hiccup must
+   * not break reading the order.
+   */
+  async reconcile(orderId: string, buyerId?: string) {
+    if (!this.gateway.lookupOrder) return;
+    const order = await this.prisma.order.findFirst({
+      where: { id: orderId, ...(buyerId ? { buyerId } : {}) },
+      select: { id: true, orderNumber: true, status: true, gatewayOrderId: true, createdAt: true },
+    });
+    if (!order || order.status !== OrderStatus.PENDING || !order.gatewayOrderId) return;
+
+    try {
+      const event = await this.gateway.lookupOrder(order.gatewayOrderId);
+      const action = decideReconciliation(event, order.createdAt);
+      if (action.kind === 'paid') {
+        this.logger.log(`Reconciled order ${order.orderNumber}: paid at the provider`);
+        await this.markPaid(order.id, {
+          chargeId: action.chargeId,
+          paymentMethod: toPaymentMethod(action.paymentMethod),
+        });
+      } else if (action.kind === 'failed') {
+        this.logger.log(`Reconciled order ${order.orderNumber}: ${action.reason}`);
+        await this.markFailed(order.id, action.reason);
+      }
+    } catch (err) {
+      this.logger.warn(`Reconciliation of ${order.orderNumber} failed: ${(err as Error).message}`);
+    }
   }
 
   async markFailedByGatewayId(gatewayOrderId: string, reason?: string) {

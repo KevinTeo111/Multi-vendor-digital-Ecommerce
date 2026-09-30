@@ -77,6 +77,7 @@ export class SubscriptionsService {
   }
 
   async getCurrent(vendorId: string) {
+    await this.reconcilePending(vendorId);
     const [current, history] = await Promise.all([
       this.getEntitling(vendorId),
       this.prisma.subscription.findMany({
@@ -95,6 +96,28 @@ export class SubscriptionsService {
           orderBy: { createdAt: 'desc' },
         });
     return { current, pending, history };
+  }
+
+  /** Safety net for lost webhooks: asks the provider about a PENDING subscription. Never throws. */
+  private async reconcilePending(vendorId: string) {
+    if (!this.gateway.lookupSubscription) return;
+    const pending = await this.prisma.subscription.findFirst({
+      where: { vendorId, status: SubscriptionStatus.PENDING, gatewaySubscriptionId: { not: null } },
+      orderBy: { createdAt: 'desc' },
+      select: { gatewaySubscriptionId: true },
+    });
+    if (!pending?.gatewaySubscriptionId) return;
+    try {
+      const event = await this.gateway.lookupSubscription(pending.gatewaySubscriptionId);
+      if (event?.kind === 'subscription.activated')
+        await this.markActive(event.gatewaySubscriptionId, event.periodStart, event.periodEnd);
+      else if (event?.kind === 'subscription.canceled')
+        await this.markCanceled(event.gatewaySubscriptionId);
+    } catch (err) {
+      this.logger.warn(
+        `Subscription reconciliation for vendor ${vendorId} failed: ${(err as Error).message}`,
+      );
+    }
   }
 
   /**

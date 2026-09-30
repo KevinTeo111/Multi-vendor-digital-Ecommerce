@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
+import { useEffect } from 'react';
 import { DownloadButton } from '@/components/download-button';
 import { PageContainer } from '@/components/page-container';
 import { RequireRole } from '@/components/require-role';
@@ -19,6 +20,14 @@ function OrderView() {
   useRealtimeEvent('order.paid', (p) => {
     if (p.orderId === id) order.reload();
   });
+  // While the provider has not confirmed yet, re-read periodically; the API reconciles pending
+  // orders with the provider on each read, so a lost webhook still resolves here.
+  const pending = order.data?.status === 'PENDING';
+  useEffect(() => {
+    if (!pending) return;
+    const timer = setInterval(() => void order.reload(), 15_000);
+    return () => clearInterval(timer);
+  }, [pending, order.reload]);
 
   if (order.error) return <Alert tone="error">{order.error}</Alert>;
   if (!order.data) return <Loading />;

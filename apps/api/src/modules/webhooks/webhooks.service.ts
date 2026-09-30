@@ -37,6 +37,12 @@ export class WebhooksService {
       throw err;
     }
 
+    // Requests the adapter dropped before authenticating them carry no information worth keeping.
+    if (event.kind === 'ignored' && event.unverified) {
+      this.logger.debug(`Ignoring unverified webhook type ${event.type}`);
+      return { received: true, ignored: event.type };
+    }
+
     let payload: Prisma.InputJsonValue;
     try {
       payload = JSON.parse(rawBody.toString('utf8'));
@@ -44,7 +50,14 @@ export class WebhooksService {
       payload = { raw: rawBody.toString('utf8').slice(0, 10_000) };
     }
 
-    // Exactly-once: the unique (provider, eventId) index rejects replays.
+    // Exactly-once: the unique (provider, eventId) index rejects replays. The lookup avoids the
+    // noisy constraint error for the common retry; the catch still covers a concurrent race.
+    const seen = await this.prisma.webhookEvent.findUnique({
+      where: { provider_eventId: { provider: this.gateway.name, eventId: event.eventId } },
+      select: { id: true },
+    });
+    if (seen) return { received: true, duplicate: true };
+
     let record;
     try {
       record = await this.prisma.webhookEvent.create({

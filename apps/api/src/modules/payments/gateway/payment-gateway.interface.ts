@@ -5,6 +5,9 @@
 
 export const PAYMENT_GATEWAY = Symbol('PAYMENT_GATEWAY');
 
+/** How long a hosted checkout stays payable (Pix and boleto need time). Orders untouched past this expire. */
+export const CHECKOUT_TTL_MS = 24 * 60 * 60 * 1000;
+
 export interface GatewayCustomer {
   id: string;
   name: string;
@@ -107,7 +110,13 @@ export type NormalizedWebhookEvent =
   | { kind: 'subscription.canceled'; eventId: string; gatewaySubscriptionId: string }
   | { kind: 'transfer.paid'; eventId: string; gatewayTransferId: string }
   | { kind: 'transfer.failed'; eventId: string; gatewayTransferId: string; reason?: string }
-  | { kind: 'ignored'; eventId: string; type: string };
+  | {
+      kind: 'ignored';
+      eventId: string;
+      type: string;
+      /** True when the adapter dropped the request before authenticating it (unhandled topic). */
+      unverified?: boolean;
+    };
 
 export type WebhookHeaders = Record<string, string | string[] | undefined>;
 export type WebhookQuery = Record<string, unknown>;
@@ -138,4 +147,12 @@ export interface PaymentGateway {
     headers: WebhookHeaders,
     query?: WebhookQuery,
   ): Promise<NormalizedWebhookEvent>;
+
+  /**
+   * Optional: asks the provider for the current state of an order / subscription, used when a
+   * webhook may have been lost. Returns the same normalized events a webhook would, or null when
+   * the provider has nothing conclusive yet.
+   */
+  lookupOrder?(gatewayOrderId: string): Promise<NormalizedWebhookEvent | null>;
+  lookupSubscription?(gatewaySubscriptionId: string): Promise<NormalizedWebhookEvent | null>;
 }
