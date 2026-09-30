@@ -180,7 +180,9 @@ export class MercadoPagoPaymentGateway implements PaymentGateway {
         failure: input.cancelUrl,
       },
       auto_return: 'approved',
-      notification_url: `${env.API_URL}/api/webhooks/payments`,
+      // No notification_url: deliveries come only from the Webhooks configuration of the
+      // application that owns the access token. Those are signed with the secret shown in its
+      // panel and listed in its delivery history; preference-level deliveries are neither.
       expires: true,
       expiration_date_from: isoWithOffset(now),
       expiration_date_to: isoWithOffset(now + CHECKOUT_TTL_MS),

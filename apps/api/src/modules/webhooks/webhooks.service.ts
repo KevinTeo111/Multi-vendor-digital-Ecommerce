@@ -76,6 +76,8 @@ export class WebhooksService {
         where: { id: record.id },
         data: { processedAt: new Date() },
       });
+      if (event.kind !== 'ignored')
+        this.logger.log(`Webhook ${event.kind} processed (${event.eventId})`);
       return { received: true, kind: event.kind };
     } catch (err) {
       const message = (err as Error).message;
