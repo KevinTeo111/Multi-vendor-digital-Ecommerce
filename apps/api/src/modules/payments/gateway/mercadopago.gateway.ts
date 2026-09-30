@@ -299,10 +299,15 @@ export class MercadoPagoPaymentGateway implements PaymentGateway {
       requestId: single(headers['x-request-id']),
       ts,
     });
-    const expected = Buffer.from(signManifest(manifest, this.webhookSecret!), 'hex');
+    const expectedHex = signManifest(manifest, this.webhookSecret!);
+    const expected = Buffer.from(expectedHex, 'hex');
     const given = Buffer.from(v1, 'hex');
-    if (expected.length !== given.length || !timingSafeEqual(expected, given))
-      throw new WebhookRejectedError('Invalid Mercado Pago signature');
+    if (expected.length !== given.length || !timingSafeEqual(expected, given)) {
+      // Hash prefixes are safe to log and tell a wrong secret apart from a wrong manifest.
+      throw new WebhookRejectedError(
+        `Invalid Mercado Pago signature (manifest="${manifest}", expected=${expectedHex.slice(0, 8)}…, given=${v1.slice(0, 8)}…)`,
+      );
+    }
 
     const tsNumber = Number(ts);
     const tsMs = tsNumber > 1e12 ? tsNumber : tsNumber * 1000; // seconds or milliseconds
