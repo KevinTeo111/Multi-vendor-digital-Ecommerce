@@ -275,6 +275,21 @@ describe('MercadoPagoPaymentGateway webhooks', () => {
     ).resolves.toMatchObject({ kind: 'order.paid', gatewayOrderId: 'ORD-L', chargeId: '42' });
   });
 
+  it('accepts any of several comma-separated secrets (rotation, multiple notifying apps)', async () => {
+    const api = fakeApi({
+      'GET /v1/payments/7': { id: 7, status: 'approved', external_reference: 'ORD-7' },
+    });
+    const gw = new MercadoPagoPaymentGateway('TEST-token', `other_secret, ${SECRET}`, {
+      fetch: api.fetchImpl,
+      now: () => NOW,
+    });
+    const ok = signed('payment', '7');
+    await expect(gw.parseWebhook(ok.raw, ok.headers, ok.query)).resolves.toMatchObject({
+      kind: 'order.paid',
+      gatewayOrderId: 'ORD-7',
+    });
+  });
+
   it('rejects missing, forged and stale signatures', async () => {
     const { gw } = gateway();
     const ok = signed('payment', '1');

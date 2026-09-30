@@ -141,12 +141,15 @@ export class MercadoPagoPaymentGateway implements PaymentGateway {
   private readonly apiUrl: string;
   private readonly statementDescriptor: string;
   private readonly signatureToleranceMs: number;
+  /** One secret normally; several while rotating (or when more than one application notifies us). */
+  private readonly webhookSecrets: string[];
 
   constructor(
     private readonly accessToken = env.MP_ACCESS_TOKEN,
-    private readonly webhookSecret = env.MP_WEBHOOK_SECRET,
+    webhookSecret = env.MP_WEBHOOK_SECRET,
     options: MercadoPagoOptions = {},
   ) {
+    this.webhookSecrets = parseSecrets(webhookSecret);
     if (!accessToken)
       throw new Error('MP_ACCESS_TOKEN is required when PAYMENT_GATEWAY=mercadopago');
     this.fetch = options.fetch ?? ((input, init) => fetch(input, init));
@@ -263,7 +266,8 @@ export class MercadoPagoPaymentGateway implements PaymentGateway {
     headers: WebhookHeaders,
     query: WebhookQuery = {},
   ): Promise<NormalizedWebhookEvent> {
-    if (!this.webhookSecret) throw new WebhookRejectedError('MP_WEBHOOK_SECRET is not configured');
+    if (this.webhookSecrets.length === 0)
+      throw new WebhookRejectedError('MP_WEBHOOK_SECRET is not configured');
 
     let body: {
       type?: string;
@@ -330,17 +334,25 @@ export class MercadoPagoPaymentGateway implements PaymentGateway {
     const manifests = [...new Set(dataIds)].map((dataId) =>
       signatureManifest({ dataId: dataId || undefined, requestId, ts }),
     );
-    const matched = manifests.some((manifest) => {
-      const expected = Buffer.from(signManifest(manifest, this.webhookSecret!), 'hex');
-      return expected.length === given.length && timingSafeEqual(expected, given);
-    });
-    if (!matched) {
+    let matchedSecret = -1;
+    for (const manifest of manifests) {
+      matchedSecret = this.webhookSecrets.findIndex((secret) => {
+        const expected = Buffer.from(signManifest(manifest, secret), 'hex');
+        return expected.length === given.length && timingSafeEqual(expected, given);
+      });
+      if (matchedSecret >= 0) break;
+    }
+    if (matchedSecret < 0) {
       // Hash prefixes are safe to log and tell a wrong secret apart from a wrong manifest.
-      const expectedHex = signManifest(manifests[0], this.webhookSecret!);
+      const expected = this.webhookSecrets
+        .map((secret) => signManifest(manifests[0], secret).slice(0, 8))
+        .join('/');
       throw new WebhookRejectedError(
-        `Invalid Mercado Pago signature (manifest="${manifests[0]}", expected=${expectedHex.slice(0, 8)}…, given=${v1.slice(0, 8)}…)`,
+        `Invalid Mercado Pago signature (manifest="${manifests[0]}", expected=${expected}…, given=${v1.slice(0, 8)}…)`,
       );
     }
+    if (this.webhookSecrets.length > 1)
+      this.logger.debug(`Webhook signature matched secret #${matchedSecret + 1}`);
 
     const tsNumber = Number(ts);
     const tsMs = tsNumber > 1e12 ? tsNumber : tsNumber * 1000; // seconds or milliseconds
@@ -502,6 +514,14 @@ export class MercadoPagoPaymentGateway implements PaymentGateway {
       throw new Error(`Mercado Pago GET ${path} failed (${res.status}): ${text.slice(0, 500)}`);
     return JSON.parse(text) as T;
   }
+}
+
+/** Comma-separated list, blanks ignored. */
+export function parseSecrets(value: string | undefined): string[] {
+  return (value ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
 function assertCurrency(currency: string) {
