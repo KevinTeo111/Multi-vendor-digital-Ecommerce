@@ -227,6 +227,16 @@ describe('MercadoPagoPaymentGateway webhooks', () => {
       kind: 'ignored',
       type: 'merchant_order',
     });
+    // Unhandled topics are dropped even when unsigned (legacy topic/id format has no data.id).
+    const legacy = Buffer.from(
+      JSON.stringify({ resource: '/merchant_orders/5', topic: 'merchant_order' }),
+    );
+    await expect(
+      gw.parseWebhook(legacy, {}, { topic: 'merchant_order', id: '5' }),
+    ).resolves.toMatchObject({
+      kind: 'ignored',
+      type: 'merchant_order',
+    });
   });
 
   it('maps subscription lifecycle: authorized, renewed, paused, cancelled', async () => {

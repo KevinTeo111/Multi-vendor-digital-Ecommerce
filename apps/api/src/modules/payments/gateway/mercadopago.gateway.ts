@@ -84,6 +84,11 @@ interface MpAuthorizedPayment {
 const DEFAULT_API_URL = 'https://api.mercadopago.com';
 const CHECKOUT_TTL_MS = 24 * 60 * 60 * 1000; // Pix and boleto need time to be paid
 const DEFAULT_SIGNATURE_TOLERANCE_MS = 60 * 60 * 1000;
+const HANDLED_TOPICS = new Set([
+  'payment',
+  'subscription_preapproval',
+  'subscription_authorized_payment',
+]);
 
 /** Mercado Pago amounts are decimals (12.34), everything else in the system is integer cents. */
 export function toDecimal(cents: number): number {
@@ -256,17 +261,28 @@ export class MercadoPagoPaymentGateway implements PaymentGateway {
   ): Promise<NormalizedWebhookEvent> {
     if (!this.webhookSecret) throw new WebhookRejectedError('MP_WEBHOOK_SECRET is not configured');
 
-    let body: { type?: string; action?: string; data?: { id?: string | number } } = {};
+    let body: {
+      type?: string;
+      topic?: string;
+      action?: string;
+      data?: { id?: string | number };
+    } = {};
     try {
       body = JSON.parse(rawBody.toString('utf8') || '{}');
     } catch {
       throw new WebhookRejectedError('Webhook body is not JSON');
     }
 
+    // Topic name: new format uses `type`, the legacy (IPN-style) format uses `topic`.
+    const type = String(query.type ?? body.type ?? query.topic ?? body.topic ?? '');
+    // Topics we never act on (merchant_order, …) are dropped before verification: no state changes,
+    // and answering 200 stops Mercado Pago from retrying them every 15 minutes.
+    if (!HANDLED_TOPICS.has(type))
+      return { kind: 'ignored', eventId: `${type || 'unknown'}:${randomUUID()}`, type };
+
     // The signed id is the one from the query string; the body carries the same value.
     const queryId = query['data.id'];
     const dataId = String(queryId ?? body.data?.id ?? '');
-    const type = String(query.type ?? body.type ?? '');
     this.verifySignature(headers, dataId);
 
     switch (type) {
