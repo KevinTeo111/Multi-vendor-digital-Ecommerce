@@ -185,8 +185,9 @@ the rest of the API never imports a provider SDK.
   then fetches the payment: `approved` marks the order paid, `rejected` / `cancelled` mark it
   failed, anything else is ignored. The same payment id is notified several times as it moves from
   pending to approved, so stored event ids are `payment:<id>:<status>`.
-- Paid plans use a preapproval plan per marketplace plan (`syncPlan`) and a preapproval per
-  subscription; `subscription_preapproval` (authorized / paused / cancelled) and
+- Paid plans use a pending preapproval **without** a Mercado Pago plan, carrying its own
+  `auto_recurring` terms, so Mercado Pago hosts the card form at `init_point` (plan-linked
+  subscriptions require a card token collected on our side, status `authorized`); `subscription_preapproval` (authorized / paused / cancelled) and
   `subscription_authorized_payment` (renewals) drive the local status. Cancelling sets the
   preapproval to `cancelled`; local entitlement keeps access until the paid period ends.
 - Payouts stay manual. Automated split payouts would use Mercado Pago marketplace mode (Phase 2).

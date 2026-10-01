@@ -111,9 +111,8 @@ describe('MercadoPagoPaymentGateway checkout', () => {
     expect(String(body.expiration_date_to)).toMatch(/\+00:00$/);
   });
 
-  it('creates a plan and a pending preapproval with the plan id', async () => {
+  it('creates a pending preapproval with its own auto_recurring (no plan, hosted card form)', async () => {
     const { gw, calls } = gateway({
-      'POST /preapproval_plan': { id: 'plan_1', status: 'active' },
       'POST /preapproval': { id: 'pre_1', status: 'pending', init_point: 'https://mp.test/sub/1' },
     });
     const plan = {
@@ -124,17 +123,13 @@ describe('MercadoPagoPaymentGateway checkout', () => {
       interval: 'YEAR' as const,
       gatewayPlanId: null,
     };
-    await expect(gw.syncPlan(plan)).resolves.toEqual({ gatewayPlanId: 'plan_1' });
-    expect((calls[0].body as { auto_recurring: unknown }).auto_recurring).toEqual({
-      frequency: 12,
-      frequency_type: 'months',
-      transaction_amount: 29,
-      currency_id: 'BRL',
-    });
+    // No API call: Mercado Pago plans need a card token we never see.
+    await expect(gw.syncPlan(plan)).resolves.toEqual({ gatewayPlanId: 'inline:YEAR:2900' });
+    expect(calls).toHaveLength(0);
 
     const sub = await gw.createSubscription({
       vendorId: 'v1',
-      plan: { ...plan, gatewayPlanId: 'plan_1' },
+      plan: { ...plan, gatewayPlanId: 'inline:YEAR:2900' },
       customer: { id: 'u1', name: 'Loja', email: 'loja@example.com' },
       successUrl: 'https://site/vendor/subscription?status=success',
       cancelUrl: 'https://site/vendor/subscription?status=canceled',
@@ -144,10 +139,40 @@ describe('MercadoPagoPaymentGateway checkout', () => {
       status: 'pending',
       checkoutUrl: 'https://mp.test/sub/1',
     });
-    expect(calls[1].body).toMatchObject({
-      preapproval_plan_id: 'plan_1',
+    expect(calls[0].body).toEqual({
+      reason: 'Seller plan: Pro',
+      external_reference: 'v1',
       payer_email: 'loja@example.com',
+      auto_recurring: {
+        frequency: 12,
+        frequency_type: 'months',
+        transaction_amount: 29,
+        currency_id: 'BRL',
+      },
+      back_url: 'https://site/vendor/subscription?status=success',
+      status: 'pending',
     });
+    expect(calls[0].body).not.toHaveProperty('preapproval_plan_id');
+  });
+
+  it('fails clearly when Mercado Pago returns no payment link', async () => {
+    const { gw } = gateway({ 'POST /preapproval': { id: 'pre_2', status: 'pending' } });
+    await expect(
+      gw.createSubscription({
+        vendorId: 'v1',
+        plan: {
+          id: 'p1',
+          name: 'Pro',
+          priceCents: 4990,
+          currency: 'BRL',
+          interval: 'MONTH',
+          gatewayPlanId: 'x',
+        },
+        customer: { id: 'u1', name: 'Loja', email: 'loja@example.com' },
+        successUrl: 'https://s',
+        cancelUrl: 'https://c',
+      }),
+    ).rejects.toThrow(/without a payment link/);
   });
 });
 

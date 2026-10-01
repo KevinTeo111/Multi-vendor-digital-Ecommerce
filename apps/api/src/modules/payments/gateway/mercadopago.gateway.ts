@@ -21,7 +21,7 @@ import {
  * - Product purchases: Checkout Pro. A Preference is created with the order number as
  *   `external_reference`; the buyer is redirected to `init_point`. Mercado Pago echoes the
  *   reference back on the payment, so the order is matched on its order number.
- * - Seller plans: a preapproval plan per marketplace plan (`syncPlan`) and a preapproval per
+ * - Seller plans: a pending preapproval without a plan (own auto_recurring) per
  *   subscription. The preapproval id is final at creation, so no id swap is needed.
  * - Payouts: not implemented; manual payout mode is used (Phase 2: marketplace split).
  * - Webhooks: Mercado Pago sends a pointer (`type` + `data.id`), signed in `x-signature`. The
@@ -200,45 +200,38 @@ export class MercadoPagoPaymentGateway implements PaymentGateway {
   // ---- Plans & subscriptions ---------------------------------------------
 
   /** Creates a preapproval plan for the marketplace plan, reusing the existing one when it still matches. */
+  /**
+   * Mercado Pago only lets a subscription reference a preapproval plan when the card is tokenized
+   * on our side (`card_token_id`, status `authorized`). We redirect to Mercado Pago's hosted page
+   * instead, which requires a subscription *without* a plan carrying its own `auto_recurring`.
+   * So there is nothing to create here: the id just fingerprints the billing terms, and
+   * plans.service clears it whenever price or interval change.
+   */
   async syncPlan(plan: PlanLike): Promise<{ gatewayPlanId: string }> {
     assertCurrency(plan.currency);
-    const recurring = {
-      frequency: plan.interval === 'YEAR' ? 12 : 1,
-      frequency_type: 'months',
-      transaction_amount: toDecimal(plan.priceCents),
-      currency_id: plan.currency.toUpperCase(),
-    };
-    if (plan.gatewayPlanId) {
-      const existing = await this.getOrNull<MpPlan>(`/preapproval_plan/${plan.gatewayPlanId}`);
-      const same =
-        existing?.status === 'active' &&
-        existing.auto_recurring?.frequency === recurring.frequency &&
-        existing.auto_recurring?.frequency_type === recurring.frequency_type &&
-        existing.auto_recurring?.transaction_amount === recurring.transaction_amount;
-      if (same) return { gatewayPlanId: plan.gatewayPlanId };
-      this.logger.warn(`Mercado Pago plan ${plan.gatewayPlanId} not reusable; creating a new one`);
-    }
-    const created = await this.request<MpPlan>('POST', '/preapproval_plan', {
-      reason: `Seller plan: ${plan.name}`.slice(0, 256),
-      external_reference: plan.id,
-      auto_recurring: recurring,
-      back_url: `${primaryWebUrl}/vendor/subscription?status=success`,
-      status: 'active',
-    });
-    return { gatewayPlanId: created.id };
+    return { gatewayPlanId: `inline:${plan.interval}:${plan.priceCents}` };
   }
 
+  /** Pending subscription without a plan: Mercado Pago hosts the card form at `init_point`. */
   async createSubscription(input: CreateSubscriptionInput): Promise<SubscriptionResult> {
-    if (!input.plan.gatewayPlanId)
-      throw new Error('Plan has no Mercado Pago plan; call syncPlan first');
+    assertCurrency(input.plan.currency);
     const preapproval = await this.request<MpPreapproval>('POST', '/preapproval', {
-      preapproval_plan_id: input.plan.gatewayPlanId,
       reason: `Seller plan: ${input.plan.name}`.slice(0, 256),
       external_reference: input.vendorId,
       payer_email: input.customer.email,
+      auto_recurring: {
+        frequency: input.plan.interval === 'YEAR' ? 12 : 1,
+        frequency_type: 'months',
+        transaction_amount: toDecimal(input.plan.priceCents),
+        currency_id: input.plan.currency.toUpperCase(),
+      },
       back_url: input.successUrl,
       status: 'pending',
     });
+    if (!preapproval.init_point)
+      throw new Error(
+        `Mercado Pago returned subscription ${preapproval.id} without a payment link`,
+      );
     return {
       gatewaySubscriptionId: preapproval.id,
       status: 'pending',

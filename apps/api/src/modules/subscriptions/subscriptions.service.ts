@@ -147,17 +147,25 @@ export class SubscriptionsService {
     if (plan.priceCents === 0) {
       result = this.freePlanResult(plan.interval);
     } else {
-      if (!plan.gatewayPlanId) {
-        const { gatewayPlanId } = await this.gateway.syncPlan(plan);
-        plan = await this.prisma.plan.update({ where: { id: plan.id }, data: { gatewayPlanId } });
+      try {
+        if (!plan.gatewayPlanId) {
+          const { gatewayPlanId } = await this.gateway.syncPlan(plan);
+          plan = await this.prisma.plan.update({ where: { id: plan.id }, data: { gatewayPlanId } });
+        }
+        result = await this.gateway.createSubscription({
+          vendorId,
+          plan,
+          customer: { id: vendor.user.id, name: vendor.user.name, email: vendor.user.email },
+          successUrl: `${primaryWebUrl}/vendor/subscription?status=success`,
+          cancelUrl: `${primaryWebUrl}/vendor/subscription?status=canceled`,
+        });
+      } catch (err) {
+        // Same contract as checkout: log the provider's answer, show the seller a clear message.
+        this.logger.error(
+          `Gateway subscription failed for vendor ${vendorId}: ${(err as Error).message}`,
+        );
+        throw new BadRequestException('Could not start the plan payment; please try again');
       }
-      result = await this.gateway.createSubscription({
-        vendorId,
-        plan,
-        customer: { id: vendor.user.id, name: vendor.user.name, email: vendor.user.email },
-        successUrl: `${primaryWebUrl}/vendor/subscription?status=success`,
-        cancelUrl: `${primaryWebUrl}/vendor/subscription?status=canceled`,
-      });
     }
 
     const subscription = await this.prisma.$transaction(async (tx) => {
