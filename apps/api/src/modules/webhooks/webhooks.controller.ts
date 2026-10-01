@@ -1,4 +1,5 @@
 import { Controller, HttpCode, Post, Req } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { Public } from '../../common/decorators/public.decorator';
 import { WebhooksService } from './webhooks.service';
@@ -7,6 +8,7 @@ interface RawBodyRequest extends Request {
   rawBody?: Buffer;
 }
 
+@SkipThrottle()
 @Controller('webhooks')
 export class WebhooksController {
   constructor(private readonly webhooks: WebhooksService) {}

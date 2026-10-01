@@ -1,5 +1,7 @@
 import { Body, Controller, Get, HttpCode, Param, Post } from '@nestjs/common';
 import { Role } from '@prisma/client';
+import { Throttle } from '@nestjs/throttler';
+import { LOGIN_RATE_LIMIT, PASSWORD_RATE_LIMIT } from '../../common/throttle';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -19,12 +21,14 @@ export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Public()
+  @Throttle(LOGIN_RATE_LIMIT)
   @Post('register')
   register(@Body() dto: RegisterDto) {
     return this.auth.register(dto);
   }
 
   @Public()
+  @Throttle(LOGIN_RATE_LIMIT)
   @Post('login')
   @HttpCode(200)
   login(@Body() dto: LoginDto) {
@@ -51,6 +55,7 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle(PASSWORD_RATE_LIMIT)
   @Post('forgot-password')
   @HttpCode(200)
   forgotPassword(@Body() dto: ForgotPasswordDto) {
@@ -58,12 +63,14 @@ export class AuthController {
   }
 
   @Public()
+  @Throttle(PASSWORD_RATE_LIMIT)
   @Post('reset-password')
   @HttpCode(200)
   resetPassword(@Body() dto: ResetPasswordDto) {
     return this.auth.resetPassword(dto.token, dto.password);
   }
 
+  @Throttle(PASSWORD_RATE_LIMIT)
   @Post('change-password')
   @HttpCode(200)
   changePassword(@CurrentUser('id') userId: string, @Body() dto: ChangePasswordDto) {
