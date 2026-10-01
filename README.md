@@ -168,6 +168,10 @@ npm run build               # all workspaces
 
 The same four steps run in GitHub Actions on every push and pull request (`.github/workflows/ci.yml`).
 
+The integration test (`apps/api/src/integration`) drives cart → checkout → signed Mercado Pago webhook →
+PAID → download against a real Postgres. It runs when `TEST_DATABASE_URL` is set (CI starts a disposable
+`postgres:16` container) and is skipped otherwise. It wipes that database, so it refuses hosted (Neon/Render) URLs.
+
 Conventions that keep the code easy to change:
 
 - **One responsibility per service.** `CheckoutService` owns order creation and the PENDING → PAID/FAILED

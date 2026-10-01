@@ -13,9 +13,25 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    services:
+      # Disposable database for the integration test (wiped on every run).
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: it
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
       # Only needed for schema validation and tests; no database is contacted.
       DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/it
       JWT_ACCESS_SECRET: ci-access-secret-0123456789abcdef0123456789
       JWT_REFRESH_SECRET: ci-refresh-secret-0123456789abcdef0123456789
     steps:
