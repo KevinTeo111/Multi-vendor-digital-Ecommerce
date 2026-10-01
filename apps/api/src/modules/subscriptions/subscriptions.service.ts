@@ -99,7 +99,7 @@ export class SubscriptionsService {
   }
 
   /** Safety net for lost webhooks: asks the provider about a PENDING subscription. Never throws. */
-  private async reconcilePending(vendorId: string) {
+  async reconcilePending(vendorId: string) {
     if (!this.gateway.lookupSubscription) return;
     const pending = await this.prisma.subscription.findFirst({
       where: { vendorId, status: SubscriptionStatus.PENDING, gatewaySubscriptionId: { not: null } },

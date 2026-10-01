@@ -117,6 +117,20 @@ the command resets the demo accounts.
   that a reset was requested. Admins can generate a link from **Admin → Users → Reset link** and hand
   it to the user privately (not available for admin accounts).
 
+## Background jobs and limits
+
+- In-process timers, no Redis: one instance needs no queue, and every job reuses the same idempotent
+  transitions as the webhooks, so a double run is harmless. Disable with `JOBS_ENABLED=false`.
+  - Every 30 min: pending orders older than 15 min are checked with the provider (lost webhook → PAID,
+    refused → FAILED, untouched past the 24 h checkout window → "Checkout expired").
+  - Every hour: pending seller plans are checked the same way; canceled plans whose paid period ended
+    become EXPIRED.
+  - Every 5 min (ledger): held sale credits whose hold period ended become available.
+- Rate limits per client IP, writes only (reads are skipped because the web app's server-side
+  rendering shares a few Vercel IPs): 120 writes/min by default, login and register 10/min,
+  password reset and change 5/min. Payment webhooks and `/api/health` are never limited.
+- Security headers via helmet.
+
 ## API surface (all under `/api`)
 
 | Area | Routes |

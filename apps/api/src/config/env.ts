@@ -36,6 +36,12 @@ const schema = z.object({
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
   MP_ACCESS_TOKEN: z.string().optional(),
   MP_WEBHOOK_SECRET: z.string().optional(),
+
+  /** In-process housekeeping timers (settle pending orders, expire lapsed plans). */
+  JOBS_ENABLED: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((v) => v === 'true'),
 });
 
 const parsed = schema.safeParse(process.env);
