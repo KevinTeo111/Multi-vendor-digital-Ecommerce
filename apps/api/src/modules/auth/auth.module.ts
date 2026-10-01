@@ -3,7 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { env } from '../../config/env';
 import { UsersModule } from '../users/users.module';
-import { AuthController } from './auth.controller';
+import { AdminPasswordController, AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
 
@@ -16,7 +16,7 @@ import { JwtStrategy } from './jwt.strategy';
       signOptions: { expiresIn: env.JWT_ACCESS_TTL as never },
     }),
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, AdminPasswordController],
   providers: [AuthService, JwtStrategy],
   exports: [AuthService],
 })

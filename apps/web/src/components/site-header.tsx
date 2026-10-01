@@ -201,6 +201,15 @@ export function SiteHeader() {
                   <ArrowRightIcon size={18} className="arrow-nudge text-brand-500" />
                 </Link>
               )}
+              {user && (
+                <Link
+                  href="/account/password"
+                  className="group flex items-center justify-between border-b border-white/10 py-4 text-lg font-semibold hover:text-cyan-400"
+                >
+                  {t('nav.changePassword')}
+                  <ArrowRightIcon size={18} className="arrow-nudge text-brand-500" />
+                </Link>
+              )}
             </nav>
 
             <div className="mt-6 flex items-center justify-between">

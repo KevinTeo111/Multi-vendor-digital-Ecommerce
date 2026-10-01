@@ -103,6 +103,20 @@ the command resets the demo accounts.
   `apps/web/src/i18n/dictionaries`; every key in `en.ts` must exist in `pt-BR.ts` (enforced by the type).
   API validation messages are not translated yet.
 
+## Accounts and passwords
+
+-  answers the same for every e-mail (no account discovery) and sends a
+  reset link valid for 30 minutes.  sets the new password and revokes every
+  session.  needs the current password, signs out every other device and
+  returns a fresh token pair for the current one.
+- Reset tokens are signed JWTs (own key, derived from ) carrying a fingerprint of
+  the password hash they were issued for. Changing the password changes the fingerprint, so each link
+  works once and every older link dies with it. No table, no cleanup job.
+- E-mail goes through the  interface (). Until a provider is
+  configured the fallback sends nothing: in development it logs the link, in production it logs only
+  that a reset was requested. Admins can generate a link from **Admin → Users → Reset link** and hand
+  it to the user privately (not available for admin accounts).
+
 ## API surface (all under `/api`)
 
 | Area | Routes |

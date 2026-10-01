@@ -9,6 +9,7 @@ import {
   EmptyState,
   Input,
   Loading,
+  Modal,
   PageHeader,
   Pagination,
   Select,
@@ -33,6 +34,34 @@ export default function AdminUsersPage() {
     pageSize: 25,
   });
   const action = useAction();
+  const [resetLink, setResetLink] = useState<{
+    email: string;
+    url: string;
+    expiresAt: string;
+  } | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const createResetLink = async (u: AdminUser) => {
+    const link = await action.run(() =>
+      api<{ url: string; expiresAt: string }>(`/admin/users/${u.id}/password-reset-link`, {
+        method: 'POST',
+      }),
+    );
+    if (link) {
+      setCopied(false);
+      setResetLink({ email: u.email, ...link });
+    }
+  };
+
+  const copyResetLink = async () => {
+    if (!resetLink) return;
+    try {
+      await navigator.clipboard.writeText(resetLink.url);
+      setCopied(true);
+    } catch {
+      /* clipboard blocked: the link stays selectable in the dialog */
+    }
+  };
 
   const toggle = async (u: AdminUser) => {
     const next = u.status === 'ACTIVE' ? 'BLOCKED' : 'ACTIVE';
@@ -111,14 +140,26 @@ export default function AdminUsersPage() {
                   <Td className="text-xs">{formatDate(u.createdAt)}</Td>
                   <Td>
                     {u.role !== 'ADMIN' && (
-                      <Button
-                        size="sm"
-                        variant={u.status === 'ACTIVE' ? 'danger' : 'secondary'}
-                        onClick={() => toggle(u)}
-                        loading={action.busy}
-                      >
-                        {u.status === 'ACTIVE' ? t('admin.blockUser') : t('admin.unblockUser')}
-                      </Button>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          variant={u.status === 'ACTIVE' ? 'danger' : 'secondary'}
+                          onClick={() => toggle(u)}
+                          loading={action.busy}
+                        >
+                          {u.status === 'ACTIVE' ? t('admin.blockUser') : t('admin.unblockUser')}
+                        </Button>
+                        {u.status === 'ACTIVE' && (
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => createResetLink(u)}
+                            loading={action.busy}
+                          >
+                            {t('admin.resetLink')}
+                          </Button>
+                        )}
+                      </div>
                     )}
                   </Td>
                 </tr>
@@ -132,6 +173,27 @@ export default function AdminUsersPage() {
           </>
         )}
       </Card>
+
+      <Modal
+        open={resetLink !== null}
+        title={t('admin.resetLinkTitle')}
+        onClose={() => setResetLink(null)}
+      >
+        {resetLink && (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              {t('admin.resetLinkHint', {
+                email: resetLink.email,
+                time: formatDate(resetLink.expiresAt, true),
+              })}
+            </p>
+            <Input readOnly value={resetLink.url} onFocus={(e) => e.currentTarget.select()} />
+            <Button onClick={copyResetLink} className="w-full">
+              {copied ? t('admin.resetLinkCopied') : t('admin.resetLinkCopy')}
+            </Button>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

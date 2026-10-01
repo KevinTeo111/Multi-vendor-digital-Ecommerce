@@ -42,6 +42,7 @@ function LoginForm() {
         <h2 className="text-2xl font-bold text-navy-900">{t('auth.loginTitle')}</h2>
         <p className="mt-1 text-sm text-slate-500">{t('auth.loginSubtitle')}</p>
       </div>
+      {params.get('reset') === '1' && !error && <Alert tone="success">{t('auth.resetDone')}</Alert>}
       {error && <Alert tone="error">{error}</Alert>}
       <Field label={t('auth.email')}>
         <Input
@@ -63,6 +64,11 @@ function LoginForm() {
           placeholder="••••••••"
         />
       </Field>
+      <div className="-mt-2 text-right text-sm">
+        <Link href="/forgot-password" className="font-medium text-brand-600 hover:underline">
+          {t('auth.forgotLink')}
+        </Link>
+      </div>
       <Button type="submit" loading={loading} className="w-full" size="lg" arrow>
         {t('auth.loginSubmit')}
       </Button>

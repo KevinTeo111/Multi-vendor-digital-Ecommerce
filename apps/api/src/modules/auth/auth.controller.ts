@@ -1,9 +1,18 @@
-import { Body, Controller, Get, HttpCode, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Post } from '@nestjs/common';
+import { Role } from '@prisma/client';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { AuthUser } from '../../common/types/auth-user';
 import { AuthService } from './auth.service';
-import { LoginDto, RefreshDto, RegisterDto } from './dto/auth.dto';
+import {
+  ChangePasswordDto,
+  ForgotPasswordDto,
+  LoginDto,
+  RefreshDto,
+  RegisterDto,
+  ResetPasswordDto,
+} from './dto/auth.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -39,5 +48,38 @@ export class AuthController {
   @Get('me')
   me(@CurrentUser() user: AuthUser) {
     return this.auth.me(user);
+  }
+
+  @Public()
+  @Post('forgot-password')
+  @HttpCode(200)
+  forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.auth.requestPasswordReset(dto.email);
+  }
+
+  @Public()
+  @Post('reset-password')
+  @HttpCode(200)
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.auth.resetPassword(dto.token, dto.password);
+  }
+
+  @Post('change-password')
+  @HttpCode(200)
+  changePassword(@CurrentUser('id') userId: string, @Body() dto: ChangePasswordDto) {
+    return this.auth.changePassword(userId, dto);
+  }
+}
+
+/** Lets an admin hand a user a reset link (support path; no e-mail needed). */
+@Controller('admin/users')
+@Roles(Role.ADMIN)
+export class AdminPasswordController {
+  constructor(private readonly auth: AuthService) {}
+
+  @Post(':id/password-reset-link')
+  @HttpCode(200)
+  createResetLink(@Param('id') id: string, @CurrentUser('id') actorId: string) {
+    return this.auth.adminCreateResetLink(id, actorId);
   }
 }

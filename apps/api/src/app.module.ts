@@ -19,6 +19,7 @@ import { OrdersModule } from './modules/orders/orders.module';
 import { FinanceModule } from './modules/finance/finance.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
+import { MailModule } from './modules/mail/mail.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -30,6 +31,7 @@ import { HealthController } from './health.controller';
     StorageModule,
     PaymentsModule,
     RealtimeModule,
+    MailModule,
     // domain
     AuthModule,
     UsersModule,

@@ -15,6 +15,7 @@ import {
   MenuIcon,
   NAV_ICONS,
   type NavIconName,
+  ShieldIcon,
 } from './icons';
 import { LanguageToggle } from './language-toggle';
 import { Logo } from './logo';
@@ -72,6 +73,12 @@ export function DashboardShell({
           </span>
           <LanguageToggle />
         </div>
+        <Link
+          href="/account/password"
+          className="flex items-center gap-3 rounded-full px-4 py-2.5 text-sm text-slate-600 hover:bg-brand-50 hover:text-brand-700"
+        >
+          <ShieldIcon size={18} /> {t('nav.changePassword')}
+        </Link>
         <Link
           href="/"
           className="flex items-center gap-3 rounded-full px-4 py-2.5 text-sm text-slate-600 hover:bg-brand-50 hover:text-brand-700"
