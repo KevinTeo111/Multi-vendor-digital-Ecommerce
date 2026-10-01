@@ -246,6 +246,27 @@ Required variables: `MP_ACCESS_TOKEN` (`TEST-…` / `APP_USR-…`), `MP_WEBHOOK_
 application that owns the access token, always on its **Production** tab (sandbox: the seller test
 user's app, whose `APP_USR-` credentials count as production; go-live: the main app), so every delivery is signed with that app's secret and visible in its delivery history.
 
+### Prices, provider fee, refunds and chargebacks
+
+- **Fee-inclusive prices.** Sellers enter their own price (`Product.basePriceCents`). The listed price
+  buyers see and pay is `ceil(seller price / (1 - fee))` with the fee from **Admin → Settings →
+  Mercado Pago fee** (`finance.gateway_fee_bps`, default 0). Saving a new rate reprices every product
+  in the same transaction; orders already placed keep their snapshot. Checkout allows one payment
+  only, so the buyer pays exactly the listed price (no installment interest).
+- **Split of each sold item:** `priceCents = gatewayFeeCents + commissionCents + vendorNetCents`. The fee
+  reserve covers Mercado Pago, the commission is taken from the seller's price, the seller keeps the
+  rest. Example with a 5% fee and 20% commission: seller price 25,00 → listed 26,32 → fee 1,32,
+  commission 5,00, seller 20,00.
+- **Refunds:** Admin → Orders → Refund (paid orders). Mercado Pago refunds the full charge first
+  (idempotency key `refund-<payment id>`); only then the order becomes REFUNDED, each seller credit is
+  reversed with a `REFUND_DEBIT`, sales counters drop and downloads close. If Mercado Pago refuses,
+  nothing changes.
+- **Refunds made in Mercado Pago's dashboard and chargebacks** arrive as `refunded` /
+  `charged_back` payment notifications and take the same path (reason prefixed "Chargeback:" for
+  disputes). Open disputes (`in_mediation`) change nothing until decided. Every path is idempotent.
+- A seller whose credit was already withdrawn goes negative: new sales cover it, and withdrawals
+  cannot be approved or marked paid while the available balance is below zero.
+
 ### Stripe (kept as an alternative; Pix is invite-only for Brazilian accounts)
 
 `PAYMENT_GATEWAY=stripe` uses `apps/api/src/modules/payments/gateway/stripe.gateway.ts`:

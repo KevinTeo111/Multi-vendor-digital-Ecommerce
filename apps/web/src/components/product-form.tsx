@@ -3,7 +3,10 @@
 import { useState, type FormEvent } from 'react';
 import { Alert, Button, Field, Input, Select, Textarea } from '@/components/ui';
 import { useT } from '@/i18n/client';
-import type { Category, VendorProduct } from '@/lib/types';
+import { formatBps, formatMoney } from '@/lib/format';
+import { listPriceCents, sellerNetCents } from '@/lib/pricing';
+import type { Category, PublicSettings, VendorMe, VendorProduct } from '@/lib/types';
+import { useFetch } from '@/lib/use-fetch';
 
 export interface ProductFormValues {
   title: string;
@@ -32,12 +35,15 @@ export function ProductForm({
   submitLabel?: string;
 }) {
   const t = useT();
+  const settings = useFetch<PublicSettings>('/settings/public');
+  const me = useFetch<VendorMe>('/vendors/me');
   const [form, setForm] = useState({
     title: initial?.title ?? '',
     categoryId: initial?.categoryId ?? categories[0]?.id ?? '',
     shortDescription: initial?.shortDescription ?? '',
     description: initial?.description ?? '',
-    price: initial ? (initial.priceCents ?? 0) / 100 : 0,
+    // Sellers edit their own price; the listed price is derived from it.
+    price: initial ? (initial.basePriceCents ?? initial.priceCents ?? 0) / 100 : 0,
     demoUrl: initial?.demoUrl ?? '',
     version: initial?.version ?? '',
     tags: (initial?.tags ?? []).join(', '),
@@ -64,6 +70,11 @@ export function ProductForm({
         .filter(Boolean),
     });
   };
+
+  const baseCents = Math.max(0, Math.round(Number(form.price) * 100) || 0);
+  const feeBps = settings.data?.gatewayFeeBps ?? 0;
+  const commissionBps = me.data?.subscription?.plan.commissionRateBps;
+  const buyerPaysCents = listPriceCents(baseCents, feeBps);
 
   return (
     <form onSubmit={submit} className="space-y-4">
@@ -92,6 +103,27 @@ export function ProductForm({
           />
         </Field>
       </div>
+      {baseCents > 0 && settings.data && (
+        <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
+          <div>
+            {t('vendor.pricingBuyerPays', { amount: formatMoney(buyerPaysCents) })}
+            {feeBps > 0 && (
+              <span className="text-slate-500">
+                {' '}
+                {t('vendor.pricingFeeNote', { rate: formatBps(feeBps) })}
+              </span>
+            )}
+          </div>
+          {commissionBps !== undefined && (
+            <div className="mt-1 font-semibold text-navy-900">
+              {t('vendor.pricingYouReceive', {
+                amount: formatMoney(sellerNetCents(baseCents, commissionBps)),
+                rate: formatBps(commissionBps),
+              })}
+            </div>
+          )}
+        </div>
+      )}
       <Field label={t('vendor.formShort')} hint={t('vendor.formShortHint')}>
         <Input
           value={form.shortDescription}

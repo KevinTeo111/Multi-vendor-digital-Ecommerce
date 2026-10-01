@@ -19,6 +19,7 @@ export default function VendorSaleDetailPage() {
   if (!sale.data) return <Loading />;
   const s = sale.data;
   const credit = s.ledgerEntries.find((e) => e.type === 'SALE_CREDIT');
+  const sellerPriceCents = s.priceCents - s.gatewayFeeCents;
 
   return (
     <div className="space-y-6">
@@ -34,6 +35,16 @@ export default function VendorSaleDetailPage() {
           </Link>
         }
       />
+
+      {s.order.status === 'REFUNDED' && (
+        <Alert tone="error">
+          {t('vendor.saleRefunded', {
+            date: formatDate(s.order.refundedAt, true),
+            reason: s.order.refundReason ?? '—',
+            amount: formatMoney(s.vendorNetCents, s.order.currency),
+          })}
+        </Alert>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
         <Card title={t('vendor.product')}>
@@ -68,8 +79,20 @@ export default function VendorSaleDetailPage() {
 
         <Card title={t('vendor.payout')}>
           <dl className="space-y-3 text-sm">
-            <Row label={t('vendor.price')}>
-              <span className="font-semibold">{formatMoney(s.priceCents, s.order.currency)}</span>
+            {s.gatewayFeeCents > 0 && (
+              <>
+                <Row label={t('vendor.buyerPaid')}>
+                  {formatMoney(s.priceCents, s.order.currency)}
+                </Row>
+                <Row label={t('vendor.providerFee')}>
+                  − {formatMoney(s.gatewayFeeCents, s.order.currency)}
+                </Row>
+              </>
+            )}
+            <Row label={t('vendor.yourPrice')}>
+              <span className="font-semibold">
+                {formatMoney(sellerPriceCents, s.order.currency)}
+              </span>
             </Row>
             <Row label={t('vendor.platformCommission')}>
               <span>

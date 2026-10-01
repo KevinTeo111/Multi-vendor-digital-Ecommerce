@@ -90,6 +90,8 @@ export interface VendorProduct {
   shortDescription: string;
   description: string;
   priceCents: number;
+  /** The seller's own price; priceCents is what buyers pay (fee included). */
+  basePriceCents: number | null;
   currency: string;
   status: ProductStatus;
   rejectionReason: string | null;
@@ -190,6 +192,7 @@ export interface OrderItem {
   commissionRateBps: number;
   commissionCents: number;
   vendorNetCents: number;
+  gatewayFeeCents: number;
   product: {
     id: string;
     slug: string;
@@ -201,7 +204,9 @@ export interface OrderItem {
   order?: {
     id: string;
     orderNumber: string;
+    status?: OrderStatus;
     paidAt: string | null;
+    refundedAt?: string | null;
     buyer?: { name: string; email?: string };
   };
   _count?: { downloads: number };
@@ -217,6 +222,8 @@ export interface Order {
   paymentMethod: string | null;
   failureReason: string | null;
   paidAt: string | null;
+  refundedAt: string | null;
+  refundReason: string | null;
   createdAt: string;
   items: OrderItem[];
   buyer?: { id: string; name: string; email: string };
@@ -229,12 +236,16 @@ export interface VendorSale {
   commissionRateBps: number;
   commissionCents: number;
   vendorNetCents: number;
+  gatewayFeeCents: number;
   createdAt: string;
   downloads: number;
   order: {
     id: string;
     orderNumber: string;
+    status: OrderStatus;
     paidAt: string | null;
+    refundedAt: string | null;
+    refundReason: string | null;
     paymentMethod: string | null;
     currency: string;
     buyer: { name: string };
@@ -306,6 +317,8 @@ export interface PublicSettings {
   maxUploadMb: number;
   allowedFileExtensions: string[];
   payoutMode: 'manual' | 'gateway';
+  /** Provider fee built into listed prices (bps). */
+  gatewayFeeBps: number;
 }
 
 export interface AdminVendor {

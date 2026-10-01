@@ -189,6 +189,8 @@ export class MercadoPagoPaymentGateway implements PaymentGateway {
       expiration_date_from: isoWithOffset(now),
       expiration_date_to: isoWithOffset(now + CHECKOUT_TTL_MS),
       statement_descriptor: this.statementDescriptor,
+      // One payment only: the buyer pays exactly the listed price, never installment interest.
+      payment_methods: { installments: 1, default_installments: 1 },
       metadata: { order_id: input.orderId, order_number: input.orderNumber },
     });
     this.logger.debug(`Preference ${preference.id} created for order ${input.orderNumber}`);
@@ -385,8 +387,17 @@ export class MercadoPagoPaymentGateway implements PaymentGateway {
           gatewayOrderId: orderNumber,
           reason: payment.status_detail ?? payment.status,
         };
+      case 'refunded':
+      case 'charged_back':
+        return {
+          kind: 'order.refunded',
+          eventId,
+          gatewayOrderId: orderNumber,
+          reason: payment.status_detail ?? payment.status,
+          chargeback: payment.status === 'charged_back',
+        };
       default:
-        // pending, in_process, authorized, refunded, charged_back: nothing to do in Phase 1.
+        // pending, in_process, authorized, in_mediation (dispute still open): nothing to do yet.
         return { kind: 'ignored', eventId, type: `payment:${payment.status}` };
     }
   }
@@ -480,14 +491,30 @@ export class MercadoPagoPaymentGateway implements PaymentGateway {
 
   // ---- HTTP --------------------------------------------------------------
 
-  private async request<T>(method: 'GET' | 'POST' | 'PUT', path: string, body?: unknown) {
+  /** Full refund. The key is derived from the charge, so a repeated click cannot refund twice. */
+  async refundPayment(chargeId: string): Promise<{ refundId: string }> {
+    const refund = await this.request<{ id: number | string }>(
+      'POST',
+      `/v1/payments/${encodeURIComponent(chargeId)}/refunds`,
+      {},
+      `refund-${chargeId}`,
+    );
+    return { refundId: String(refund.id) };
+  }
+
+  private async request<T>(
+    method: 'GET' | 'POST' | 'PUT',
+    path: string,
+    body?: unknown,
+    idempotencyKey?: string,
+  ) {
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this.accessToken}`,
       Accept: 'application/json',
     };
     if (body !== undefined) {
       headers['Content-Type'] = 'application/json';
-      headers['X-Idempotency-Key'] = randomUUID();
+      headers['X-Idempotency-Key'] = idempotencyKey ?? randomUUID();
     }
     const res = await this.fetch(`${this.apiUrl}${path}`, {
       method,

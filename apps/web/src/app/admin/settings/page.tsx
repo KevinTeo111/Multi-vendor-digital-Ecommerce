@@ -58,6 +58,12 @@ export default function AdminSettingsPage() {
           hint: t('admin.defaultCommissionHint'),
         },
         {
+          key: 'finance.gateway_fee_bps',
+          label: t('admin.gatewayFee'),
+          kind: 'percent',
+          hint: t('admin.gatewayFeeHint'),
+        },
+        {
           key: 'finance.payout_mode',
           label: t('admin.payoutMode'),
           kind: 'select',

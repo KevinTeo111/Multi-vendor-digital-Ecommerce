@@ -45,6 +45,10 @@ export class MockPaymentGateway implements PaymentGateway {
     };
   }
 
+  async refundPayment(chargeId: string) {
+    return { refundId: `mock_rf_${chargeId}` };
+  }
+
   async cancelSubscription(gatewaySubscriptionId: string): Promise<void> {
     this.logger.debug(`Mock cancel subscription ${gatewaySubscriptionId}`);
   }

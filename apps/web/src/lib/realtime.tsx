@@ -19,7 +19,9 @@ export type RealtimeEvent =
   | 'withdrawal.requested'
   | 'sale.new'
   | 'subscription.status'
-  | 'order.paid';
+  | 'order.paid'
+  | 'order.refunded'
+  | 'sale.refunded';
 type Handler = (payload: Record<string, unknown>) => void;
 
 interface RealtimeState {
@@ -70,6 +72,8 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
       'sale.new',
       'subscription.status',
       'order.paid',
+      'order.refunded',
+      'sale.refunded',
     ];
     for (const ev of events) socket.on(ev, dispatch(ev));
 
@@ -127,6 +131,23 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
           tone: entry.tone,
           action: { label: t('dashboard.navPlan'), href: '/vendor/subscription' },
         });
+    });
+    socket.on(
+      'sale.refunded',
+      (p: { productTitle: string; amountCents: number; chargeback: boolean }) => {
+        toast.push(
+          t(p.chargeback ? 'toast.saleChargeback' : 'toast.saleRefunded', {
+            title: p.productTitle,
+            amount: formatMoney(p.amountCents),
+          }),
+          { tone: 'error', action: { label: t('dashboard.navOrders'), href: '/vendor/sales' } },
+        );
+      },
+    );
+    socket.on('order.refunded', (p: { orderNumber: string }) => {
+      toast.push(t('toast.orderRefunded', { number: p.orderNumber }), {
+        action: { label: t('nav.orders'), href: '/orders' },
+      });
     });
     socket.on('order.paid', (p: { orderId: string; orderNumber: string }) => {
       toast.push(t('toast.orderPaid', { number: p.orderNumber }), {

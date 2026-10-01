@@ -63,6 +63,8 @@ describeIfDb('Checkout, webhook and download (integration)', () => {
     secret?: string,
   ) => { headers: Record<string, string>; body: string; query: string };
   const preferenceBodies: Array<{ external_reference: string }> = [];
+  const refundKeys: Array<string | null> = [];
+  let paymentStatus = 'approved';
 
   beforeAll(async () => {
     await resetDatabase(TEST_DB!);
@@ -74,18 +76,23 @@ describeIfDb('Checkout, webhook and download (integration)', () => {
     const { MercadoPagoPaymentGateway, signManifest, signatureManifest } =
       await import('../modules/payments/gateway/mercadopago.gateway');
 
-    // Fake Mercado Pago REST API: records preferences, answers the payment lookup as approved.
+    // Fake Mercado Pago REST API: records preferences and refunds, answers the payment lookup with
+    // whatever state the test has moved the payment to.
     const fakeFetch = async (input: string, init?: RequestInit) => {
       const path = input.replace('https://api.mercadopago.com', '');
       if (path === '/checkout/preferences' && init?.method === 'POST') {
         preferenceBodies.push(JSON.parse(String(init.body)));
         return new Response(JSON.stringify({ id: 'pref-1', init_point: 'https://mp.test/pay' }));
       }
+      if (path === `/v1/payments/${PAYMENT_ID}/refunds` && init?.method === 'POST') {
+        refundKeys.push(new Headers(init.headers).get('X-Idempotency-Key'));
+        return new Response(JSON.stringify({ id: 4242, status: 'approved' }), { status: 201 });
+      }
       if (path === `/v1/payments/${PAYMENT_ID}`) {
         return new Response(
           JSON.stringify({
             id: Number(PAYMENT_ID),
-            status: 'approved',
+            status: paymentStatus,
             external_reference: preferenceBodies.at(-1)?.external_reference,
             payment_type_id: 'bank_transfer',
             payment_method_id: 'pix',
@@ -159,7 +166,32 @@ describeIfDb('Checkout, webhook and download (integration)', () => {
     return res.data.accessToken as string;
   };
 
-  it('pays through a signed webhook, credits the seller once, and authorises downloads', async () => {
+  const deliver = async (paymentId: string, secret?: string) => {
+    const hook = signedWebhook(paymentId, secret);
+    const res = await fetch(`${base}/webhooks/payments${hook.query}`, {
+      method: 'POST',
+      headers: hook.headers,
+      body: hook.body,
+    });
+    return res.status;
+  };
+
+  it('prices with the fee, pays through a signed webhook, authorises downloads, and refunds once', async () => {
+    const { listPriceCents } = await import('@marketplace/shared');
+    const bcrypt = await import('bcryptjs');
+    await prisma.user.create({
+      data: {
+        email: 'admin@it.test',
+        name: 'Admin',
+        role: 'ADMIN',
+        passwordHash: await bcrypt.hash('admin-password-1', 4),
+      },
+    });
+    const adminLogin = await call('POST', '/auth/login', {
+      body: { email: 'admin@it.test', password: 'admin-password-1' },
+    });
+    const admin = adminLogin.data.accessToken as string;
+
     // Seller with an approved product and a file, seeded directly.
     const sellerUser = await prisma.user.create({
       data: { email: 'seller@it.test', name: 'Seller', passwordHash: 'x', role: 'VENDOR' },
@@ -190,6 +222,21 @@ describeIfDb('Checkout, webhook and download (integration)', () => {
       },
     });
 
+    // Setting the provider fee reprices the catalogue: the seller keeps 25,00, buyers see 26,32.
+    expect(
+      (
+        await call('PUT', '/admin/settings', {
+          token: admin,
+          body: { 'finance.gateway_fee_bps': 500 },
+        })
+      ).status,
+    ).toBe(200);
+    const listed = listPriceCents(2500, 500);
+    expect(await prisma.product.findUniqueOrThrow({ where: { id: product.id } })).toMatchObject({
+      basePriceCents: 2500,
+      priceCents: listed,
+    });
+
     const buyer = await register('buyer@it.test');
     const stranger = await register('stranger@it.test');
 
@@ -203,6 +250,12 @@ describeIfDb('Checkout, webhook and download (integration)', () => {
     const order = checkout.data.order;
     expect(order.status).toBe('PENDING');
     expect(preferenceBodies.at(-1)?.external_reference).toBe(order.orderNumber);
+    // The buyer is charged exactly the listed price, in one payment.
+    expect(order.totalCents).toBe(listed);
+    expect(preferenceBodies.at(-1)).toMatchObject({
+      items: [expect.objectContaining({ unit_price: listed / 100 })],
+      payment_methods: { installments: 1, default_installments: 1 },
+    });
     const itemId = order.items[0].id as string;
 
     // No download before payment.
@@ -246,7 +299,13 @@ describeIfDb('Checkout, webhook and download (integration)', () => {
       type: 'SALE_CREDIT',
       amountCents: paid.items[0].vendorNetCents,
     });
-    expect(paid.items[0].commissionCents + paid.items[0].vendorNetCents).toBe(2500);
+    // Fee reserve 1,32 + commission 20% of the seller's 25,00 + seller 20,00 = 26,32 paid.
+    expect(paid.items[0]).toMatchObject({
+      priceCents: listed,
+      gatewayFeeCents: listed - 2500,
+      commissionCents: 500,
+      vendorNetCents: 2000,
+    });
     expect((await prisma.product.findUniqueOrThrow({ where: { id: product.id } })).salesCount).toBe(
       1,
     );
@@ -263,5 +322,49 @@ describeIfDb('Checkout, webhook and download (integration)', () => {
       (await call('GET', `/orders/items/${itemId}/download`, { token: stranger })).status,
     ).toBe(404);
     expect((await call('GET', `/orders/items/${itemId}/download`)).status).toBe(401);
+
+    // Admin refund: Mercado Pago is asked first (once, with a charge-derived key), then the order
+    // is reversed: credit debited, sales counter back, downloads closed.
+    const refund = await call('POST', `/admin/orders/${order.id}/refund`, {
+      token: admin,
+      body: { reason: 'Customer request' },
+    });
+    expect(refund.status).toBe(201);
+    expect(refund.data.status).toBe('REFUNDED');
+    expect(refundKeys).toEqual([`refund-${PAYMENT_ID}`]);
+
+    const reversed = await prisma.order.findUniqueOrThrow({ where: { id: order.id } });
+    expect(reversed).toMatchObject({ status: 'REFUNDED', refundReason: 'Customer request' });
+    expect(reversed.refundedAt).toBeInstanceOf(Date);
+    const entries = await prisma.ledgerEntry.findMany({
+      where: { vendorId: vendor.id },
+      orderBy: { createdAt: 'asc' },
+    });
+    expect(entries.map((e) => [e.type, e.amountCents])).toEqual([
+      ['SALE_CREDIT', 2000],
+      ['REFUND_DEBIT', -2000],
+    ]);
+    expect((await prisma.product.findUniqueOrThrow({ where: { id: product.id } })).salesCount).toBe(
+      0,
+    );
+    expect((await call('GET', `/orders/items/${itemId}/download`, { token: buyer })).status).toBe(
+      403,
+    );
+
+    // Mercado Pago's own "refunded" notification arrives later: verified, and changes nothing.
+    paymentStatus = 'refunded';
+    expect(await deliver(PAYMENT_ID)).toBe(200);
+    expect(await prisma.ledgerEntry.count({ where: { vendorId: vendor.id } })).toBe(2);
+
+    // A second refund attempt is refused without calling the provider again.
+    expect(
+      (
+        await call('POST', `/admin/orders/${order.id}/refund`, {
+          token: admin,
+          body: { reason: 'Again' },
+        })
+      ).status,
+    ).toBe(400);
+    expect(refundKeys).toHaveLength(1);
   });
 });

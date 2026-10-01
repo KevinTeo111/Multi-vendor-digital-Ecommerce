@@ -1,6 +1,8 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
+  BPS_DENOMINATOR,
+  MAX_GATEWAY_FEE_BPS,
   PAYOUT_MODES,
   SETTING_DEFAULTS,
   SETTING_KEYS,
@@ -51,6 +53,7 @@ export class SettingsService {
       maxUploadMb: all[SETTING_KEYS.MAX_UPLOAD_MB],
       allowedFileExtensions: all[SETTING_KEYS.ALLOWED_FILE_EXTENSIONS],
       payoutMode: all[SETTING_KEYS.PAYOUT_MODE],
+      gatewayFeeBps: all[SETTING_KEYS.GATEWAY_FEE_BPS],
     };
   }
 
@@ -61,17 +64,32 @@ export class SettingsService {
       this.validateValue(key, value);
     }
 
-    await this.prisma.$transaction(
-      entries.map(([key, value]) =>
+    const feeBps = patch[SETTING_KEYS.GATEWAY_FEE_BPS] as number | undefined;
+    await this.prisma.$transaction([
+      ...entries.map(([key, value]) =>
         this.prisma.setting.upsert({
           where: { key },
           create: { key, value: value as Prisma.InputJsonValue },
           update: { value: value as Prisma.InputJsonValue },
         }),
       ),
-    );
+      // A new provider fee changes every listed price; the sellers' own prices stay as they are.
+      ...(feeBps === undefined ? [] : [this.repriceProducts(feeBps)]),
+    ]);
     this.cache = null;
     return this.getAll();
+  }
+
+  /**
+   * listed = ceil(seller price / (1 - fee)), in integer SQL identical to listPriceCents(). Orders
+   * already placed keep their snapshot; carts and new checkouts use the new listed price.
+   */
+  private repriceProducts(feeBps: number) {
+    const keep = BPS_DENOMINATOR - feeBps;
+    return this.prisma.$executeRaw`
+      UPDATE "Product"
+      SET "basePriceCents" = COALESCE("basePriceCents", "priceCents"),
+          "priceCents" = (COALESCE("basePriceCents", "priceCents") * ${BPS_DENOMINATOR} + ${keep} - 1) / ${keep}`;
   }
 
   private isKnownKey(key: string): key is SettingKey {
@@ -96,6 +114,9 @@ export class SettingsService {
       }
       if (key === SETTING_KEYS.DEFAULT_COMMISSION_BPS && (value as number) > 10_000) {
         fail('commission cannot exceed 10000 bps (100%)');
+      }
+      if (key === SETTING_KEYS.GATEWAY_FEE_BPS && (value as number) > MAX_GATEWAY_FEE_BPS) {
+        fail(`provider fee cannot exceed ${MAX_GATEWAY_FEE_BPS} bps (20%)`);
       }
       return;
     }

@@ -179,6 +179,7 @@ export class WithdrawalsService {
     if (!withdrawal.vendor.payoutDetails) {
       throw new BadRequestException('Vendor has no payout details on file');
     }
+    await this.assertBalanceNotNegative(withdrawal.vendorId);
 
     const payoutMode = await this.settings.get(SETTING_KEYS.PAYOUT_MODE);
     if (payoutMode === 'gateway' && !this.gateway.supportsPayouts) {
@@ -281,6 +282,8 @@ export class WithdrawalsService {
         `Withdrawals in status ${withdrawal.status} cannot be marked as paid`,
       );
     }
+    if (withdrawal.status === WithdrawalStatus.REQUESTED)
+      await this.assertBalanceNotNegative(withdrawal.vendorId);
 
     const updated = await this.prisma.withdrawal.update({
       where: { id },
@@ -384,6 +387,18 @@ export class WithdrawalsService {
         if (updated.status === WithdrawalStatus.FAILED) this.notify(updated);
         return updated;
       });
+  }
+
+  /**
+   * The requested amount is already reserved, so a negative remainder means a refund or chargeback
+   * arrived after the request: paying it out would send money the seller no longer has.
+   */
+  private async assertBalanceNotNegative(vendorId: string) {
+    const balance = await this.ledger.getBalance(vendorId);
+    if (balance.availableCents < 0)
+      throw new BadRequestException(
+        'A refund or chargeback left this seller with a negative balance. Reject this withdrawal, or wait until new sales cover the difference.',
+      );
   }
 
   private async releaseHold(

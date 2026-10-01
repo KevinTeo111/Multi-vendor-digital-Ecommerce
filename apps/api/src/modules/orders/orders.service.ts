@@ -124,7 +124,11 @@ export class OrdersService {
   // ---- Vendor sales ---------------------------------------------------------
 
   async listSalesForVendor(vendorId: string, query: VendorSalesQuery) {
-    const where: Prisma.OrderItemWhereInput = { vendorId, order: { status: OrderStatus.PAID } };
+    const where: Prisma.OrderItemWhereInput = {
+      vendorId,
+      order: { status: { in: [OrderStatus.PAID, OrderStatus.REFUNDED] } },
+    };
+    const paidOnly: Prisma.OrderItemWhereInput = { vendorId, order: { status: OrderStatus.PAID } };
     const [page, totals] = await Promise.all([
       findPage(
         query,
@@ -139,7 +143,9 @@ export class OrdersService {
                 select: {
                   id: true,
                   orderNumber: true,
+                  status: true,
                   paidAt: true,
+                  refundedAt: true,
                   buyer: { select: { name: true } },
                 },
               },
@@ -149,7 +155,7 @@ export class OrdersService {
         () => this.prisma.orderItem.count({ where }),
       ),
       this.prisma.orderItem.aggregate({
-        where,
+        where: paidOnly,
         _sum: { priceCents: true, commissionCents: true, vendorNetCents: true },
       }),
     ]);
@@ -166,13 +172,20 @@ export class OrdersService {
   /** One sale as the vendor sees it: item, order, buyer name, payout status, downloads. */
   async getSaleForVendor(vendorId: string, orderItemId: string) {
     const item = await this.prisma.orderItem.findFirst({
-      where: { id: orderItemId, vendorId, order: { status: OrderStatus.PAID } },
+      where: {
+        id: orderItemId,
+        vendorId,
+        order: { status: { in: [OrderStatus.PAID, OrderStatus.REFUNDED] } },
+      },
       include: {
         order: {
           select: {
             id: true,
             orderNumber: true,
+            status: true,
             paidAt: true,
+            refundedAt: true,
+            refundReason: true,
             paymentMethod: true,
             currency: true,
             buyer: { select: { name: true } },

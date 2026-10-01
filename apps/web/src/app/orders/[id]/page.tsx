@@ -20,6 +20,9 @@ function OrderView() {
   useRealtimeEvent('order.paid', (p) => {
     if (p.orderId === id) order.reload();
   });
+  useRealtimeEvent('order.refunded', (p) => {
+    if (p.orderId === id) order.reload();
+  });
   // While the provider has not confirmed yet, re-read periodically; the API reconciles pending
   // orders with the provider on each read, so a lost webhook still resolves here.
   const pending = order.data?.status === 'PENDING';
@@ -50,6 +53,14 @@ function OrderView() {
         </Alert>
       )}
       {o.status === 'PAID' && <Alert tone="success">{t('orders.confirmed')}</Alert>}
+      {o.status === 'REFUNDED' && (
+        <Alert tone="info">
+          {t('orders.refunded', {
+            date: formatDate(o.refundedAt, true),
+            reason: o.refundReason ?? '—',
+          })}
+        </Alert>
+      )}
 
       <Card className="mt-4">
         <ul className="divide-y divide-slate-100">

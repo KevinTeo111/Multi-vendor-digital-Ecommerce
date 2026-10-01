@@ -8,7 +8,9 @@ export type RealtimeEvent =
   | 'withdrawal.requested' // admins: a vendor requested a withdrawal
   | 'sale.new' // vendor: one of their products was sold
   | 'subscription.status' // vendor: plan subscription activated / past due / canceled
-  | 'order.paid'; // buyer: an order was confirmed
+  | 'order.paid' // buyer: an order was confirmed
+  | 'order.refunded' // buyer: an order was refunded or charged back
+  | 'sale.refunded'; // vendor: a sale was refunded or charged back (credit reversed)
 
 /** Thin publisher used by domain services. Never throws: realtime is best-effort. */
 @Injectable()

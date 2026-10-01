@@ -108,6 +108,7 @@ describe('MercadoPagoPaymentGateway checkout', () => {
       failure: 'https://site/cart?status=canceled',
     });
     expect(body.auto_return).toBe('approved');
+    expect(body.payment_methods).toEqual({ installments: 1, default_installments: 1 });
     expect(String(body.expiration_date_to)).toMatch(/\+00:00$/);
   });
 
@@ -475,5 +476,66 @@ describe('MercadoPagoPaymentGateway webhooks', () => {
     await expect(
       gw.parseWebhook(cancelled.raw, cancelled.headers, cancelled.query),
     ).resolves.toMatchObject({ kind: 'subscription.canceled', gatewaySubscriptionId: 'pre_3' });
+  });
+});
+
+describe('MercadoPagoPaymentGateway refunds and chargebacks', () => {
+  it('maps refunded and charged_back payments to order.refunded', async () => {
+    const { gw } = gateway({
+      'GET /v1/payments/31': {
+        id: 31,
+        status: 'refunded',
+        status_detail: 'refunded',
+        external_reference: 'ORD-R1',
+      },
+      'GET /v1/payments/32': {
+        id: 32,
+        status: 'charged_back',
+        status_detail: 'reimbursed',
+        external_reference: 'ORD-R2',
+      },
+      'GET /v1/payments/33': { id: 33, status: 'in_mediation', external_reference: 'ORD-R3' },
+    });
+    const refunded = signed('payment', '31');
+    await expect(gw.parseWebhook(refunded.raw, refunded.headers, refunded.query)).resolves.toEqual({
+      kind: 'order.refunded',
+      eventId: 'payment:31:refunded',
+      gatewayOrderId: 'ORD-R1',
+      reason: 'refunded',
+      chargeback: false,
+    });
+    const chargeback = signed('payment', '32');
+    await expect(
+      gw.parseWebhook(chargeback.raw, chargeback.headers, chargeback.query),
+    ).resolves.toMatchObject({
+      kind: 'order.refunded',
+      gatewayOrderId: 'ORD-R2',
+      chargeback: true,
+    });
+    // An open dispute changes nothing until it is decided.
+    const dispute = signed('payment', '33');
+    await expect(
+      gw.parseWebhook(dispute.raw, dispute.headers, dispute.query),
+    ).resolves.toMatchObject({ kind: 'ignored', type: 'payment:in_mediation' });
+  });
+
+  it('refunds the full charge with an idempotency key derived from the charge', async () => {
+    const seen: Array<{ path: string; key: string | null }> = [];
+    const gw = new MercadoPagoPaymentGateway('TEST-token', SECRET, {
+      now: () => NOW,
+      fetch: async (input, init) => {
+        seen.push({
+          path: input.replace('https://api.mercadopago.com', ''),
+          key: new Headers(init?.headers).get('X-Idempotency-Key'),
+        });
+        return new Response(JSON.stringify({ id: 9001, status: 'approved' }), { status: 201 });
+      },
+    });
+    await expect(gw.refundPayment('555')).resolves.toEqual({ refundId: '9001' });
+    await gw.refundPayment('555');
+    expect(seen).toEqual([
+      { path: '/v1/payments/555/refunds', key: 'refund-555' },
+      { path: '/v1/payments/555/refunds', key: 'refund-555' },
+    ]);
   });
 });

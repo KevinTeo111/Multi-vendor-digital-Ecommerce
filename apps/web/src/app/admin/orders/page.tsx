@@ -2,21 +2,26 @@
 
 import { useState } from 'react';
 import {
+  Alert,
   Badge,
+  Button,
   Card,
   EmptyState,
   Input,
   Loading,
+  Modal,
   PageHeader,
   Pagination,
   Select,
   Table,
   Td,
+  Textarea,
 } from '@/components/ui';
 import { useLocale } from '@/i18n/client';
 import { formatDate, formatMoney } from '@/lib/format';
 import type { Order, Paginated } from '@/lib/types';
-import { useFetch } from '@/lib/use-fetch';
+import { api } from '@/lib/api';
+import { useAction, useFetch } from '@/lib/use-fetch';
 
 export default function AdminOrdersPage() {
   const { t, status: statusLabel } = useLocale();
@@ -29,6 +34,21 @@ export default function AdminOrdersPage() {
     page,
     pageSize: 25,
   });
+  const action = useAction();
+  const [refunding, setRefunding] = useState<Order | null>(null);
+  const [reason, setReason] = useState('');
+
+  const refund = async () => {
+    if (!refunding) return;
+    const done = await action.run(() =>
+      api(`/admin/orders/${refunding.id}/refund`, { method: 'POST', body: { reason } }),
+    );
+    if (done !== undefined) {
+      setRefunding(null);
+      setReason('');
+      list.reload();
+    }
+  };
 
   return (
     <div>
@@ -78,6 +98,7 @@ export default function AdminOrdersPage() {
                 t('orders.total'),
                 t('vendor.commission'),
                 t('common.status'),
+                t('common.actions'),
               ]}
             >
               {list.data.items.map((o) => (
@@ -105,6 +126,23 @@ export default function AdminOrdersPage() {
                   </Td>
                   <Td>
                     <Badge status={o.status} />
+                    {o.status === 'REFUNDED' && o.refundReason && (
+                      <div className="mt-1 max-w-48 text-xs text-slate-500">{o.refundReason}</div>
+                    )}
+                  </Td>
+                  <Td>
+                    {o.status === 'PAID' && (
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        onClick={() => {
+                          action.setError(null);
+                          setRefunding(o);
+                        }}
+                      >
+                        {t('admin.refund')}
+                      </Button>
+                    )}
                   </Td>
                 </tr>
               ))}
@@ -117,6 +155,41 @@ export default function AdminOrdersPage() {
           </>
         )}
       </Card>
+
+      <Modal
+        open={refunding !== null}
+        title={t('admin.refundTitle', { number: refunding?.orderNumber ?? '' })}
+        onClose={() => setRefunding(null)}
+      >
+        {refunding && (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              {t('admin.refundText', {
+                amount: formatMoney(refunding.totalCents, refunding.currency),
+              })}
+            </p>
+            {action.error && <Alert tone="error">{action.error}</Alert>}
+            <Textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder={t('admin.refundReason')}
+              rows={3}
+              maxLength={500}
+            />
+            <Button
+              variant="danger"
+              className="w-full"
+              loading={action.busy}
+              disabled={reason.trim().length < 3}
+              onClick={refund}
+            >
+              {t('admin.refundConfirm', {
+                amount: formatMoney(refunding.totalCents, refunding.currency),
+              })}
+            </Button>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

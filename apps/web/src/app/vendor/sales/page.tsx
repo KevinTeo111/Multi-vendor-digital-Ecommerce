@@ -1,7 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { Card, EmptyState, ListRow, Loading, PageHeader, Pagination, Stat } from '@/components/ui';
+import {
+  Badge,
+  Card,
+  EmptyState,
+  ListRow,
+  Loading,
+  PageHeader,
+  Pagination,
+  Stat,
+} from '@/components/ui';
 import { useT } from '@/i18n/client';
 import { formatDate, formatMoney } from '@/lib/format';
 import { useRealtimeEvent } from '@/lib/realtime';
@@ -17,6 +26,7 @@ export default function VendorSalesPage() {
   const [page, setPage] = useState(1);
   const sales = useFetch<Sales>('/vendor/sales', { page, pageSize: 25 });
   useRealtimeEvent('sale.new', () => sales.reload());
+  useRealtimeEvent('sale.refunded', () => sales.reload());
 
   if (!sales.data) return <Loading />;
   const { totals } = sales.data;
@@ -52,7 +62,10 @@ export default function VendorSalesPage() {
                 }
                 trailing={
                   <span className="text-right">
-                    <span className="block font-semibold text-navy-900">
+                    {s.order?.status === 'REFUNDED' && <Badge status="REFUNDED" />}
+                    <span
+                      className={`block font-semibold ${s.order?.status === 'REFUNDED' ? 'text-slate-400 line-through' : 'text-navy-900'}`}
+                    >
                       {formatMoney(s.vendorNetCents)}
                     </span>
                     <span className="block text-xs text-slate-500">

@@ -97,6 +97,12 @@ export class WebhooksService {
         });
       case 'order.failed':
         return this.checkout.markFailedByGatewayId(event.gatewayOrderId, event.reason);
+      case 'order.refunded':
+        return this.checkout.markRefundedByGatewayId(
+          event.gatewayOrderId,
+          event.reason,
+          event.chargeback,
+        );
       case 'subscription.activated':
         return this.subscriptions.markActive(
           event.gatewaySubscriptionId,

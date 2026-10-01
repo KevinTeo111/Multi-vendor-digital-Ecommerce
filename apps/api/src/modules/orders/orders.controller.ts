@@ -1,10 +1,15 @@
-import { Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import type { Request } from 'express';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { CheckoutService } from './checkout.service';
-import { AdminOrdersQuery, BuyerOrdersQuery, VendorSalesQuery } from './dto/order.dto';
+import {
+  AdminOrdersQuery,
+  BuyerOrdersQuery,
+  RefundOrderDto,
+  VendorSalesQuery,
+} from './dto/order.dto';
 import { OrdersService } from './orders.service';
 
 @Controller()
@@ -80,7 +85,15 @@ export class VendorSalesController {
 @Controller('admin/orders')
 @Roles(Role.ADMIN)
 export class AdminOrdersController {
-  constructor(private readonly orders: OrdersService) {}
+  constructor(
+    private readonly orders: OrdersService,
+    private readonly checkout: CheckoutService,
+  ) {}
+
+  @Post(':id/refund')
+  refund(@Param('id') id: string, @Body() dto: RefundOrderDto, @CurrentUser('id') adminId: string) {
+    return this.checkout.refund(id, adminId, dto.reason.trim());
+  }
 
   @Get()
   list(@Query() query: AdminOrdersQuery) {

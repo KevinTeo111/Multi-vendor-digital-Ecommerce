@@ -91,6 +91,14 @@ export type NormalizedWebhookEvent =
     }
   | { kind: 'order.failed'; eventId: string; gatewayOrderId: string; reason?: string }
   | {
+      /** The provider returned the money (refund) or the card issuer reversed it (chargeback). */
+      kind: 'order.refunded';
+      eventId: string;
+      gatewayOrderId: string;
+      reason: string;
+      chargeback: boolean;
+    }
+  | {
       kind: 'subscription.activated';
       eventId: string;
       gatewaySubscriptionId: string;
@@ -154,5 +162,8 @@ export interface PaymentGateway {
    * the provider has nothing conclusive yet.
    */
   lookupOrder?(gatewayOrderId: string): Promise<NormalizedWebhookEvent | null>;
+
+  /** Full refund of a paid charge. Safe to repeat for the same charge. */
+  refundPayment?(chargeId: string): Promise<{ refundId: string }>;
   lookupSubscription?(gatewaySubscriptionId: string): Promise<NormalizedWebhookEvent | null>;
 }

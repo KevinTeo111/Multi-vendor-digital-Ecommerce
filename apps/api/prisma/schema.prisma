@@ -224,7 +224,10 @@ model Product {
   slug             String        @unique
   shortDescription String
   description      String
+  /// Listed price the buyer pays: seller price + provider fee (see listPriceCents).
   priceCents       Int
+  /// The seller's own price. Null only for rows written before fee-inclusive pricing.
+  basePriceCents   Int?
   currency         String        @default("BRL")
   status           ProductStatus @default(DRAFT)
   rejectionReason  String?
@@ -307,6 +310,8 @@ model Order {
   gatewayChargeId String?
   failureReason   String?
   paidAt          DateTime?
+  refundedAt      DateTime?
+  refundReason    String? // "Chargeback: …" for card disputes
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
@@ -328,6 +333,7 @@ model OrderItem {
   commissionRateBps Int // snapshot of plan commission at time of sale
   commissionCents   Int
   vendorNetCents    Int
+  gatewayFeeCents   Int      @default(0) // provider fee reserve: priceCents = fee + commission + net
   createdAt         DateTime @default(now())
 
   order         Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)

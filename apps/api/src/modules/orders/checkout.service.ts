@@ -7,7 +7,7 @@ import {
   ProductStatus,
   VendorStatus,
 } from '@prisma/client';
-import { SETTING_KEYS, splitSale } from '@marketplace/shared';
+import { SETTING_KEYS, splitSaleWithFee } from '@marketplace/shared';
 import { randomBytes } from 'node:crypto';
 import { primaryWebUrl } from '../../config/env';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -69,7 +69,7 @@ export class CheckoutService {
           status: ProductStatus.APPROVED,
           vendor: { status: VendorStatus.ACTIVE },
         },
-        select: { id: true, title: true, priceCents: true, vendorId: true },
+        select: { id: true, title: true, priceCents: true, basePriceCents: true, vendorId: true },
       });
       if (products.length !== cart.items.length)
         throw new BadRequestException(
@@ -88,7 +88,13 @@ export class CheckoutService {
 
       const items = products.map((p) => {
         const { rateBps, planId } = rateByVendor.get(p.vendorId)!;
-        const { commissionCents, vendorNetCents } = splitSale(p.priceCents, rateBps);
+        // The buyer pays the listed price; the fee reserve covers the provider, the commission is
+        // taken from the seller's own price, and the seller keeps the rest.
+        const { gatewayFeeCents, commissionCents, vendorNetCents } = splitSaleWithFee(
+          p.priceCents,
+          p.basePriceCents ?? p.priceCents,
+          rateBps,
+        );
         return {
           productId: p.id,
           vendorId: p.vendorId,
@@ -98,6 +104,7 @@ export class CheckoutService {
           commissionRateBps: rateBps,
           commissionCents,
           vendorNetCents,
+          gatewayFeeCents,
         };
       });
       const subtotalCents = items.reduce((s, i) => s + i.priceCents, 0);
@@ -291,6 +298,116 @@ export class CheckoutService {
     } catch (err) {
       this.logger.warn(`Reconciliation of ${order.orderNumber} failed: ${(err as Error).message}`);
     }
+  }
+
+  // ---- Refunds and chargebacks ------------------------------------------------
+
+  /**
+   * Admin refund: Mercado Pago returns the money to the buyer first; only when it accepts is the
+   * order reversed here. If the provider refuses, nothing changes on our side.
+   */
+  async refund(orderId: string, adminId: string, reason: string) {
+    const order = await this.prisma.order.findUnique({ where: { id: orderId } });
+    if (!order) throw new NotFoundException('Order not found');
+    if (order.status !== OrderStatus.PAID)
+      throw new BadRequestException('Only paid orders can be refunded');
+
+    const paidThroughProvider = order.paymentMethod !== PaymentMethod.MOCK;
+    if (paidThroughProvider) {
+      if (!order.gatewayChargeId || !this.gateway.refundPayment)
+        throw new BadRequestException('This order has no provider payment to refund');
+      try {
+        await this.gateway.refundPayment(order.gatewayChargeId);
+      } catch (err) {
+        this.logger.error(`Refund of ${order.orderNumber} refused: ${(err as Error).message}`);
+        throw new BadRequestException(
+          'The payment provider did not accept the refund. Check the payment in its dashboard.',
+        );
+      }
+    }
+    await this.markRefunded(order.id, { reason, actorId: adminId, chargeback: false });
+    return this.orders.getForAdmin(order.id);
+  }
+
+  /**
+   * PAID → REFUNDED, exactly once (compare-and-set), for refunds and chargebacks alike: every
+   * seller credit is reversed with a REFUND_DEBIT, the sale leaves the counters, and download
+   * access ends because downloads require a PAID order. A seller who already withdrew the money
+   * goes negative; new sales cover it and withdrawals stay blocked until then.
+   */
+  async markRefunded(
+    orderId: string,
+    opts: { reason: string; actorId?: string; chargeback: boolean },
+  ) {
+    const reason = opts.chargeback ? `Chargeback: ${opts.reason}` : opts.reason;
+    const refunded = await this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.order.updateMany({
+        where: { id: orderId, status: OrderStatus.PAID },
+        data: { status: OrderStatus.REFUNDED, refundedAt: new Date(), refundReason: reason },
+      });
+      if (claimed.count === 0) return null; // already refunded, or never paid
+
+      const order = await tx.order.findUniqueOrThrow({
+        where: { id: orderId },
+        include: { items: true },
+      });
+      for (const item of order.items) {
+        await tx.ledgerEntry.create({
+          data: {
+            vendorId: item.vendorId,
+            type: LedgerEntryType.REFUND_DEBIT,
+            status: LedgerEntryStatus.AVAILABLE,
+            amountCents: -item.vendorNetCents,
+            availableAt: new Date(),
+            orderItemId: item.id,
+            description: `${opts.chargeback ? 'Chargeback' : 'Refund'}: ${item.productTitle}`,
+          },
+        });
+        await tx.product.updateMany({
+          where: { id: item.productId, salesCount: { gt: 0 } },
+          data: { salesCount: { decrement: 1 } },
+        });
+      }
+      await this.audit.log(
+        {
+          actorId: opts.actorId ?? null,
+          action: opts.chargeback ? 'order.chargeback' : 'order.refunded',
+          entityType: 'Order',
+          entityId: orderId,
+          metadata: { totalCents: order.totalCents, reason },
+        },
+        tx,
+      );
+      return order;
+    });
+
+    if (!refunded) return;
+    this.realtime.toUser(refunded.buyerId, 'order.refunded', {
+      orderId: refunded.id,
+      orderNumber: refunded.orderNumber,
+    });
+    for (const item of refunded.items) {
+      this.realtime.toVendor(item.vendorId, 'sale.refunded', {
+        orderItemId: item.id,
+        orderNumber: refunded.orderNumber,
+        productTitle: item.productTitle,
+        amountCents: item.vendorNetCents,
+        chargeback: opts.chargeback,
+      });
+    }
+  }
+
+  /** Refund or chargeback reported by the provider (including ones done in its dashboard). */
+  async markRefundedByGatewayId(gatewayOrderId: string, reason: string, chargeback: boolean) {
+    const order = await this.prisma.order.findUnique({
+      where: { gatewayOrderId },
+      select: { id: true },
+    });
+    if (!order) {
+      this.logger.warn(`Refund webhook for unknown gateway order ${gatewayOrderId}`);
+      return;
+    }
+    await this.markRefunded(order.id, { reason, chargeback });
   }
 
   async markFailedByGatewayId(gatewayOrderId: string, reason?: string) {

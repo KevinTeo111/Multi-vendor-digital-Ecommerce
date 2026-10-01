@@ -285,6 +285,8 @@ const en = {
     failed: 'Payment failed. You can try again from your cart.',
     failedReason: 'Payment failed: {reason}. You can try again from your cart.',
     confirmed: 'Payment confirmed. Your files are ready to download.',
+    refunded:
+      'This order was refunded on {date}. Reason: {reason}. Downloads are no longer available.',
     orderTitle: 'Order {number}',
   },
   library: {
@@ -362,8 +364,16 @@ const en = {
     createDraft: 'Create draft',
     formTitle: 'Title',
     formCategory: 'Category',
-    formPrice: 'Price',
-    formPriceHint: '0 for free products',
+    formPrice: 'Your price',
+    formPriceHint: 'What you charge for the product. 0 for free products.',
+    pricingBuyerPays: 'Buyers pay {amount}',
+    pricingFeeNote: '(includes the {rate} Mercado Pago fee)',
+    pricingYouReceive: 'You receive {amount} per sale after the {rate} platform commission',
+    buyerPaid: 'Buyer paid',
+    providerFee: 'Mercado Pago fee',
+    yourPrice: 'Your price',
+    saleRefunded:
+      'This sale was refunded on {date}. Reason: {reason}. The credit of {amount} was reversed from your balance.',
     formShort: 'Short description',
     formShortHint: 'Shown in listings, 10 to 300 characters',
     formDescription: 'Full description',
@@ -564,6 +574,15 @@ const en = {
       'Send this link to {email} through a private channel. It works once and expires at {time}.',
     resetLinkCopy: 'Copy link',
     resetLinkCopied: 'Copied',
+    refund: 'Refund',
+    refundTitle: 'Refund order {number}',
+    refundText:
+      "Mercado Pago will return {amount} to the buyer. The sellers' credits are reversed and downloads close. This cannot be undone.",
+    refundReason: 'Reason (shown to the buyer and the seller)',
+    refundConfirm: 'Refund {amount}',
+    gatewayFee: 'Mercado Pago fee',
+    gatewayFeeHint:
+      "Your rate at Mercado Pago. Listed prices include it, so buyers pay exactly the listed price and sellers keep their own price minus commission. Saving a new rate updates every product's listed price.",
     // plans
     plansTitle: 'Plans',
     plansDescription: 'Commission, listing limits and weekly withdrawal allowance per plan.',
@@ -633,6 +652,9 @@ const en = {
     subscriptionPastDue: 'Your plan payment failed. Please update your payment method.',
     subscriptionCanceled: 'Your plan subscription was canceled.',
     orderPaid: 'Order {number} confirmed. Your files are ready.',
+    orderRefunded: 'Order {number} was refunded.',
+    saleRefunded: 'Refund: “{title}” (−{amount})',
+    saleChargeback: 'Chargeback: “{title}” (−{amount})',
     newSubmission: 'New product submitted for review: “{title}”',
     newWithdrawalRequest: 'New withdrawal request of {amount}',
     addedToCart: '“{title}” added to your cart.',

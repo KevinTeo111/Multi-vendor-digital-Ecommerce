@@ -6,11 +6,13 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma, ProductStatus, VendorStatus } from '@prisma/client';
+import { SETTING_KEYS, listPriceCents } from '@marketplace/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { slugify, slugWithSuffix } from '../../common/utils/slug';
 import { findPage, mapPage } from '../../common/dto/pagination.dto';
 import { AuditService } from '../audit/audit.service';
 import { RealtimeService } from '../realtime/realtime.service';
+import { SettingsService } from '../settings/settings.service';
 import { StorageService } from '../storage/storage.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import {
@@ -56,7 +58,14 @@ export class ProductsService {
     private readonly subscriptions: SubscriptionsService,
     private readonly audit: AuditService,
     private readonly realtime: RealtimeService,
+    private readonly settings: SettingsService,
   ) {}
+
+  /** The seller's own price and the listed price the buyer pays (fee built in). */
+  private async pricing(basePriceCents: number) {
+    const feeBps = await this.settings.get(SETTING_KEYS.GATEWAY_FEE_BPS);
+    return { basePriceCents, priceCents: listPriceCents(basePriceCents, feeBps) };
+  }
 
   // =========================================================================
   // Vendor
@@ -112,7 +121,7 @@ export class ProductsService {
       title: dto.title.trim(),
       shortDescription: dto.shortDescription.trim(),
       description: dto.description,
-      priceCents: dto.priceCents,
+      ...(await this.pricing(dto.priceCents)),
       demoUrl: dto.demoUrl,
       version: dto.version,
       tags: this.normalizeTags(dto.tags),
@@ -145,7 +154,7 @@ export class ProductsService {
         categoryId: dto.categoryId,
         shortDescription: dto.shortDescription?.trim(),
         description: dto.description,
-        priceCents: dto.priceCents,
+        ...(dto.priceCents === undefined ? {} : await this.pricing(dto.priceCents)),
         demoUrl: dto.demoUrl,
         version: dto.version,
         tags: dto.tags ? this.normalizeTags(dto.tags) : undefined,

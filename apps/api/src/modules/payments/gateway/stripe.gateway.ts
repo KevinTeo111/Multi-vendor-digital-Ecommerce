@@ -132,6 +132,14 @@ export class StripePaymentGateway implements PaymentGateway {
     throw new Error('Automated payouts are not enabled for Stripe; use manual payout mode');
   }
 
+  async refundPayment(chargeId: string): Promise<{ refundId: string }> {
+    const refund = await this.stripe.refunds.create(
+      { payment_intent: chargeId },
+      { idempotencyKey: `refund-${chargeId}` },
+    );
+    return { refundId: refund.id };
+  }
+
   // ---- Reconciliation (lost webhooks) ------------------------------------
 
   async lookupOrder(gatewayOrderId: string): Promise<NormalizedWebhookEvent | null> {

@@ -1,5 +1,5 @@
 import { OrderStatus } from '@prisma/client';
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 
 export class BuyerOrdersQuery extends PaginationDto {
@@ -14,3 +14,10 @@ export class AdminOrdersQuery extends PaginationDto {
 }
 
 export class VendorSalesQuery extends PaginationDto {}
+
+export class RefundOrderDto {
+  @IsString()
+  @MinLength(3)
+  @MaxLength(500)
+  reason: string;
+}
