@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from './api';
+import type { Paginated } from './types';
 
 type Query = Record<string, string | number | boolean | undefined | null>;
 
@@ -36,6 +37,33 @@ export function useFetch<T>(path: string | null, query?: Query) {
     reload,
     setData: setData as React.Dispatch<React.SetStateAction<T | null>>,
   };
+}
+
+/**
+ * A paginated list with filters, for every list page. Empty filter values are left out of the
+ * query, and changing a filter always goes back to page 1.
+ *
+ *   const list = usePagedList<Order>('/admin/orders', { status: '', search: '' });
+ *   <Input value={list.filters.search} onChange={(e) => list.setFilter('search', e.target.value)} />
+ *   <Pagination page={list.page} totalPages={list.data?.totalPages ?? 1} onChange={list.setPage} />
+ */
+export function usePagedList<Item, Response extends Paginated<Item> = Paginated<Item>>(
+  path: string,
+  initialFilters: Record<string, string> = {},
+  pageSize = 25,
+) {
+  const [filters, setFilters] = useState(initialFilters);
+  const [page, setPage] = useState(1);
+  const query: Query = { page, pageSize };
+  for (const [key, value] of Object.entries(filters)) if (value) query[key] = value;
+  const list = useFetch<Response>(path, query);
+
+  const setFilter = useCallback((key: string, value: string) => {
+    setFilters((current) => ({ ...current, [key]: value }));
+    setPage(1);
+  }, []);
+
+  return { ...list, filters, setFilter, page, setPage };
 }
 
 /** Wraps a mutation with busy/error state. */

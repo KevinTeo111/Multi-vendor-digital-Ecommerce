@@ -29,7 +29,7 @@ export function SortSelect({ value }: { value?: string }) {
       <select
         value={value ?? 'newest'}
         onChange={(e) => change(e.target.value)}
-        className="bg-transparent font-semibold text-navy-900 focus:outline-none"
+        className="bg-transparent text-base font-semibold text-navy-900 focus:outline-none sm:text-sm"
         aria-label={t('browse.sortBy')}
       >
         {OPTIONS.map(([v, label]) => (

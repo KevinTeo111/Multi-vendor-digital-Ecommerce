@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import {
   Badge,
   Card,
@@ -15,7 +14,7 @@ import { useT } from '@/i18n/client';
 import { formatDate, formatMoney } from '@/lib/format';
 import { useRealtimeEvent } from '@/lib/realtime';
 import type { OrderItem, Paginated } from '@/lib/types';
-import { useFetch } from '@/lib/use-fetch';
+import { usePagedList } from '@/lib/use-fetch';
 
 type Sales = Paginated<OrderItem> & {
   totals: { grossCents: number; commissionCents: number; netCents: number };
@@ -23,8 +22,7 @@ type Sales = Paginated<OrderItem> & {
 
 export default function VendorSalesPage() {
   const t = useT();
-  const [page, setPage] = useState(1);
-  const sales = useFetch<Sales>('/vendor/sales', { page, pageSize: 25 });
+  const sales = usePagedList<OrderItem, Sales>('/vendor/sales', {});
   useRealtimeEvent('sale.new', () => sales.reload());
   useRealtimeEvent('sale.refunded', () => sales.reload());
 
@@ -78,7 +76,7 @@ export default function VendorSalesPage() {
             <Pagination
               page={sales.data.page}
               totalPages={sales.data.totalPages}
-              onChange={setPage}
+              onChange={sales.setPage}
             />
           </div>
         )}

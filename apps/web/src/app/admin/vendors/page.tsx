@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Suspense, useState } from 'react';
+import { Suspense } from 'react';
 import {
+  FilterBar,
   Alert,
   Badge,
   Button,
@@ -20,20 +21,15 @@ import {
 import { useLocale } from '@/i18n/client';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/format';
-import type { AdminVendor, Paginated } from '@/lib/types';
-import { useAction, useFetch } from '@/lib/use-fetch';
+import type { AdminVendor } from '@/lib/types';
+import { useAction, usePagedList } from '@/lib/use-fetch';
 
 function VendorsView() {
   const { t, status: statusLabel } = useLocale();
   const params = useSearchParams();
-  const [status, setStatus] = useState('');
-  const [search, setSearch] = useState(params.get('search') ?? '');
-  const [page, setPage] = useState(1);
-  const list = useFetch<Paginated<AdminVendor>>('/admin/vendors', {
-    status: status || undefined,
-    search: search || undefined,
-    page,
-    pageSize: 25,
+  const list = usePagedList<AdminVendor>('/admin/vendors', {
+    status: '',
+    search: params.get('search') ?? '',
   });
   const action = useAction();
 
@@ -55,23 +51,17 @@ function VendorsView() {
       )}
       <Card
         actions={
-          <div className="flex gap-2">
+          <FilterBar>
             <Input
               placeholder={t('admin.searchSeller')}
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              className="w-48"
+              value={list.filters.search}
+              onChange={(e) => list.setFilter('search', e.target.value)}
+              className="sm:w-56"
             />
             <Select
-              value={status}
-              onChange={(e) => {
-                setStatus(e.target.value);
-                setPage(1);
-              }}
-              className="w-auto"
+              value={list.filters.status}
+              onChange={(e) => list.setFilter('status', e.target.value)}
+              className="sm:w-auto"
               aria-label={t('common.status')}
             >
               {['', 'ACTIVE', 'PENDING', 'SUSPENDED'].map((s) => (
@@ -80,7 +70,7 @@ function VendorsView() {
                 </option>
               ))}
             </Select>
-          </div>
+          </FilterBar>
         }
       >
         {list.loading && !list.data ? (
@@ -152,7 +142,7 @@ function VendorsView() {
             <Pagination
               page={list.data.page}
               totalPages={list.data.totalPages}
-              onChange={setPage}
+              onChange={list.setPage}
             />
           </>
         )}

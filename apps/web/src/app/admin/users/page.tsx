@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import {
+  FilterBar,
   Alert,
   Badge,
   Button,
@@ -19,20 +20,12 @@ import {
 import { useLocale } from '@/i18n/client';
 import { api } from '@/lib/api';
 import { formatDate } from '@/lib/format';
-import type { AdminUser, Paginated } from '@/lib/types';
-import { useAction, useFetch } from '@/lib/use-fetch';
+import type { AdminUser } from '@/lib/types';
+import { useAction, usePagedList } from '@/lib/use-fetch';
 
 export default function AdminUsersPage() {
   const { t, status: statusLabel } = useLocale();
-  const [role, setRole] = useState('');
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
-  const list = useFetch<Paginated<AdminUser>>('/admin/users', {
-    role: role || undefined,
-    search: search || undefined,
-    page,
-    pageSize: 25,
-  });
+  const list = usePagedList<AdminUser>('/admin/users', { role: '', search: '' });
   const action = useAction();
   const [resetLink, setResetLink] = useState<{
     email: string;
@@ -82,23 +75,17 @@ export default function AdminUsersPage() {
       )}
       <Card
         actions={
-          <div className="flex gap-2">
+          <FilterBar>
             <Input
               placeholder={t('admin.searchUser')}
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              className="w-48"
+              value={list.filters.search}
+              onChange={(e) => list.setFilter('search', e.target.value)}
+              className="sm:w-56"
             />
             <Select
-              value={role}
-              onChange={(e) => {
-                setRole(e.target.value);
-                setPage(1);
-              }}
-              className="w-auto"
+              value={list.filters.role}
+              onChange={(e) => list.setFilter('role', e.target.value)}
+              className="sm:w-auto"
               aria-label={t('admin.role')}
             >
               {['', 'BUYER', 'VENDOR', 'ADMIN'].map((r) => (
@@ -107,7 +94,7 @@ export default function AdminUsersPage() {
                 </option>
               ))}
             </Select>
-          </div>
+          </FilterBar>
         }
       >
         {list.loading && !list.data ? (
@@ -168,7 +155,7 @@ export default function AdminUsersPage() {
             <Pagination
               page={list.data.page}
               totalPages={list.data.totalPages}
-              onChange={setPage}
+              onChange={list.setPage}
             />
           </>
         )}

@@ -61,7 +61,7 @@ export default async function HomePage({
                 name="search"
                 placeholder={t('home.searchPlaceholder')}
                 aria-label={t('common.search')}
-                className="h-10 flex-1 bg-transparent px-4 text-sm text-navy-900 placeholder:text-slate-400 focus:outline-none"
+                className="h-10 min-w-0 flex-1 bg-transparent px-4 text-base text-navy-900 sm:text-sm placeholder:text-slate-400 focus:outline-none"
               />
               <button
                 type="submit"
@@ -124,7 +124,7 @@ export default async function HomePage({
         </div>
       </section>
 
-      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+      <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
         {/* Categories ---------------------------------------------------- */}
         <section className="py-8">
           <div className="scrollbar-none flex gap-3 overflow-x-auto pb-2">

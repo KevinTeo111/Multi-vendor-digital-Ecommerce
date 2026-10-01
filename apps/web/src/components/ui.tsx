@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { Children, cloneElement, isValidElement } from 'react';
 import type {
   ButtonHTMLAttributes,
   InputHTMLAttributes,
@@ -125,7 +126,7 @@ export function ArrowCircle({
 // ---------------------------------------------------------------------------
 
 const controlClass =
-  'w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-navy-900 shadow-sm placeholder:text-slate-400 transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20';
+  'w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-base text-navy-900 sm:text-sm shadow-sm placeholder:text-slate-400 transition focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20';
 
 export function Field({
   label,
@@ -260,17 +261,29 @@ export function ListRow({
 }) {
   const inner = (
     <>
-      {meta && <span className="w-28 shrink-0 text-xs text-slate-500 sm:text-sm">{meta}</span>}
-      {tag && <span className="w-28 shrink-0 text-xs font-semibold text-brand-600">{tag}</span>}
-      <span className="min-w-0 flex-1 truncate text-sm font-medium text-navy-900 sm:text-base">
-        {title}
+      <span className="min-w-0 flex-1 sm:flex sm:items-center sm:gap-4">
+        {(meta || tag) && (
+          <span className="mb-1 flex flex-wrap gap-x-3 gap-y-0.5 sm:contents">
+            {meta && (
+              <span className="text-xs text-slate-500 sm:w-28 sm:shrink-0 sm:text-sm">{meta}</span>
+            )}
+            {tag && (
+              <span className="text-xs font-semibold text-brand-600 sm:w-28 sm:shrink-0">
+                {tag}
+              </span>
+            )}
+          </span>
+        )}
+        <span className="line-clamp-2 block min-w-0 text-sm font-medium text-navy-900 sm:flex-1 sm:truncate sm:text-base">
+          {title}
+        </span>
       </span>
       {trailing && <span className="shrink-0 text-sm text-slate-600">{trailing}</span>}
       <ArrowCircle size="sm" />
     </>
   );
   const className =
-    'group flex items-center gap-4 border-b border-slate-200 py-4 transition hover:bg-brand-50/40';
+    'group flex items-center gap-3 border-b border-slate-200 py-4 transition hover:bg-brand-50/40 sm:gap-4';
   if (href) {
     return (
       <Link href={href} className={className}>
@@ -401,11 +414,28 @@ export function EmptyState({
   );
 }
 
+/**
+ * Data table. Below md each row becomes a card of "header: value" lines, so no page needs its own
+ * mobile layout: the header labels are passed to every Td automatically.
+ */
 export function Table({ headers, children }: { headers: string[]; children: ReactNode }) {
+  const rows = Children.map(children, (row) =>
+    isValidElement<{ children?: ReactNode; className?: string }>(row)
+      ? cloneElement(row, {
+          className: cx(
+            'max-md:block max-md:rounded-xl max-md:border max-md:border-slate-200 max-md:p-3',
+            row.props.className,
+          ),
+          children: Children.toArray(row.props.children).map((cell, i) =>
+            isValidElement<TdProps>(cell) ? cloneElement(cell, { label: headers[i] }) : cell,
+          ),
+        })
+      : row,
+  );
   return (
-    <div className="-mx-5 overflow-x-auto">
-      <table className="min-w-full text-sm">
-        <thead className="bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+    <div className="-mx-5 overflow-x-auto max-md:mx-0 max-md:overflow-visible">
+      <table className="min-w-full text-sm max-md:block">
+        <thead className="bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500 max-md:hidden">
           <tr>
             {headers.map((h, i) => (
               <th key={`${h}-${i}`} className="px-5 py-2.5">
@@ -414,14 +444,46 @@ export function Table({ headers, children }: { headers: string[]; children: Reac
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100">{children}</tbody>
+        <tbody className="divide-y divide-slate-100 max-md:block max-md:space-y-3 max-md:divide-y-0">
+          {rows}
+        </tbody>
       </table>
     </div>
   );
 }
 
-export function Td({ children, className }: { children?: ReactNode; className?: string }) {
-  return <td className={cx('px-5 py-3 align-middle', className)}>{children}</td>;
+interface TdProps {
+  children?: ReactNode;
+  className?: string;
+  /** Column header, injected by Table; shown before the value on phones. */
+  label?: string;
+}
+
+export function Td({ children, className, label }: TdProps) {
+  return (
+    <td
+      data-label={label}
+      className={cx(
+        'px-5 py-3 align-middle',
+        'max-md:flex max-md:items-start max-md:justify-between max-md:gap-4 max-md:px-0 max-md:py-1.5 max-md:text-right max-md:has-[>div:empty]:hidden',
+        label &&
+          'max-md:before:shrink-0 max-md:before:pt-0.5 max-md:before:text-left max-md:before:text-[11px] max-md:before:font-semibold max-md:before:uppercase max-md:before:tracking-wider max-md:before:text-slate-500 max-md:before:content-[attr(data-label)]',
+        className,
+      )}
+    >
+      {/* One block per cell, so multi-part values stack and long ones wrap inside the card. */}
+      <div className="max-md:min-w-0 max-md:[overflow-wrap:anywhere]">{children}</div>
+    </td>
+  );
+}
+
+/** Search and filter controls for a Card header: stacked and full width on phones, inline above. */
+export function FilterBar({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+      {children}
+    </div>
+  );
 }
 
 export function Pagination({
@@ -472,7 +534,7 @@ export function Modal({
       aria-modal="true"
       aria-label={title}
     >
-      <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+      <div className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl sm:p-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-navy-900">{title}</h2>
           <button

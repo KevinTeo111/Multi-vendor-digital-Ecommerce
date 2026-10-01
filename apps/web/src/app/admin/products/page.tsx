@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
 import {
+  FilterBar,
   Badge,
   Card,
   EmptyState,
@@ -17,21 +17,16 @@ import {
 import { useLocale } from '@/i18n/client';
 import { formatDate, formatMoney } from '@/lib/format';
 import { useRealtimeEvent } from '@/lib/realtime';
-import type { Paginated, VendorProduct } from '@/lib/types';
-import { useFetch } from '@/lib/use-fetch';
+import type { VendorProduct } from '@/lib/types';
+import { usePagedList } from '@/lib/use-fetch';
 
 const STATUSES = ['PENDING_REVIEW', '', 'APPROVED', 'REJECTED', 'BLOCKED', 'DRAFT', 'UNPUBLISHED'];
 
 export default function AdminProductsPage() {
   const { t, status: statusLabel } = useLocale();
-  const [status, setStatus] = useState('PENDING_REVIEW');
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
-  const list = useFetch<Paginated<VendorProduct>>('/admin/products', {
-    status: status || undefined,
-    search: search || undefined,
-    page,
-    pageSize: 25,
+  const list = usePagedList<VendorProduct>('/admin/products', {
+    status: 'PENDING_REVIEW',
+    search: '',
   });
   useRealtimeEvent('product.submitted', () => list.reload());
 
@@ -40,23 +35,17 @@ export default function AdminProductsPage() {
       <PageHeader title={t('admin.reviewTitle')} description={t('admin.reviewDescription')} />
       <Card
         actions={
-          <div className="flex gap-2">
+          <FilterBar>
             <Input
               placeholder={t('admin.searchTitleStore')}
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-              className="w-48"
+              value={list.filters.search}
+              onChange={(e) => list.setFilter('search', e.target.value)}
+              className="sm:w-56"
             />
             <Select
-              value={status}
-              onChange={(e) => {
-                setStatus(e.target.value);
-                setPage(1);
-              }}
-              className="w-auto"
+              value={list.filters.status}
+              onChange={(e) => list.setFilter('status', e.target.value)}
+              className="sm:w-auto"
               aria-label={t('common.status')}
             >
               {STATUSES.map((s) => (
@@ -65,7 +54,7 @@ export default function AdminProductsPage() {
                 </option>
               ))}
             </Select>
-          </div>
+          </FilterBar>
         }
       >
         {list.loading && !list.data ? (
@@ -120,7 +109,7 @@ export default function AdminProductsPage() {
             <Pagination
               page={list.data.page}
               totalPages={list.data.totalPages}
-              onChange={setPage}
+              onChange={list.setPage}
             />
           </>
         )}

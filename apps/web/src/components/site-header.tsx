@@ -147,7 +147,7 @@ export function SiteHeader() {
                   onChange={(e) => setQ(e.target.value)}
                   placeholder={t('home.searchPlaceholder')}
                   aria-label={t('common.search')}
-                  className="h-11 w-full rounded-full border border-slate-200 bg-surface pl-11 pr-4 text-sm text-navy-900 placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
+                  className="h-11 w-full rounded-full border border-slate-200 bg-surface pl-11 pr-4 text-base text-navy-900 sm:text-sm placeholder:text-slate-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/20"
                 />
               </label>
               <button

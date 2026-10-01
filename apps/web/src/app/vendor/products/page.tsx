@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
 import {
   Alert,
   Badge,
@@ -20,20 +19,14 @@ import { useLocale } from '@/i18n/client';
 import { api } from '@/lib/api';
 import { formatDate, formatMoney } from '@/lib/format';
 import { useRealtimeEvent } from '@/lib/realtime';
-import type { Paginated, VendorProduct } from '@/lib/types';
-import { useAction, useFetch } from '@/lib/use-fetch';
+import type { VendorProduct } from '@/lib/types';
+import { useAction, usePagedList } from '@/lib/use-fetch';
 
 const STATUSES = ['', 'DRAFT', 'PENDING_REVIEW', 'APPROVED', 'REJECTED', 'UNPUBLISHED', 'BLOCKED'];
 
 export default function VendorProductsPage() {
   const { t, status: statusLabel } = useLocale();
-  const [status, setStatus] = useState('');
-  const [page, setPage] = useState(1);
-  const list = useFetch<Paginated<VendorProduct>>('/vendor/products', {
-    status: status || undefined,
-    page,
-    pageSize: 20,
-  });
+  const list = usePagedList<VendorProduct>('/vendor/products', { status: '' }, 20);
   const action = useAction();
 
   // Admin decisions arrive live: patch the row in place, no reload needed.
@@ -84,11 +77,8 @@ export default function VendorProductsPage() {
       <Card
         actions={
           <Select
-            value={status}
-            onChange={(e) => {
-              setStatus(e.target.value);
-              setPage(1);
-            }}
+            value={list.filters.status}
+            onChange={(e) => list.setFilter('status', e.target.value)}
             className="w-auto"
             aria-label={t('common.status')}
           >
@@ -178,7 +168,7 @@ export default function VendorProductsPage() {
             <Pagination
               page={list.data.page}
               totalPages={list.data.totalPages}
-              onChange={setPage}
+              onChange={list.setPage}
             />
           </>
         )}

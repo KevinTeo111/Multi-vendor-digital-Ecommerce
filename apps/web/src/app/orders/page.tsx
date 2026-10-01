@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { PageContainer } from '@/components/page-container';
 import { RequireRole } from '@/components/require-role';
 import {
@@ -16,13 +15,12 @@ import {
 import { useT } from '@/i18n/client';
 import { formatDate, formatMoney } from '@/lib/format';
 import { useRealtimeEvent } from '@/lib/realtime';
-import type { Order, Paginated } from '@/lib/types';
-import { useFetch } from '@/lib/use-fetch';
+import type { Order } from '@/lib/types';
+import { usePagedList } from '@/lib/use-fetch';
 
 function OrdersList() {
   const t = useT();
-  const [page, setPage] = useState(1);
-  const data = useFetch<Paginated<Order>>('/orders', { page, pageSize: 20 });
+  const data = usePagedList<Order>('/orders', {}, 20);
   useRealtimeEvent('order.paid', () => data.reload());
 
   if (!data.data) return <Loading />;
@@ -71,7 +69,7 @@ function OrdersList() {
             <Pagination
               page={data.data.page}
               totalPages={data.data.totalPages}
-              onChange={setPage}
+              onChange={data.setPage}
             />
           </div>
         </Card>

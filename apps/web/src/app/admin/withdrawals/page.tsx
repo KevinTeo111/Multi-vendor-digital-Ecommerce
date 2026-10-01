@@ -22,20 +22,14 @@ import { useLocale } from '@/i18n/client';
 import { api } from '@/lib/api';
 import { formatDate, formatMoney } from '@/lib/format';
 import { useRealtimeEvent } from '@/lib/realtime';
-import type { Paginated, PublicSettings, Withdrawal } from '@/lib/types';
-import { useAction, useFetch } from '@/lib/use-fetch';
+import type { PublicSettings, Withdrawal } from '@/lib/types';
+import { useAction, useFetch, usePagedList } from '@/lib/use-fetch';
 
 const STATUSES = ['REQUESTED', 'APPROVED', '', 'PAID', 'REJECTED', 'FAILED'];
 
 export default function AdminWithdrawalsPage() {
   const { t, status: statusLabel } = useLocale();
-  const [status, setStatus] = useState('REQUESTED');
-  const [page, setPage] = useState(1);
-  const list = useFetch<Paginated<Withdrawal>>('/admin/finance/withdrawals', {
-    status: status || undefined,
-    page,
-    pageSize: 25,
-  });
+  const list = usePagedList<Withdrawal>('/admin/finance/withdrawals', { status: 'REQUESTED' });
   const settings = useFetch<PublicSettings>('/settings/public');
   const action = useAction();
   const [rejecting, setRejecting] = useState<Withdrawal | null>(null);
@@ -107,11 +101,8 @@ export default function AdminWithdrawalsPage() {
       <Card
         actions={
           <Select
-            value={status}
-            onChange={(e) => {
-              setStatus(e.target.value);
-              setPage(1);
-            }}
+            value={list.filters.status}
+            onChange={(e) => list.setFilter('status', e.target.value)}
             className="w-auto"
             aria-label={t('common.status')}
           >
@@ -211,7 +202,7 @@ export default function AdminWithdrawalsPage() {
             <Pagination
               page={list.data.page}
               totalPages={list.data.totalPages}
-              onChange={setPage}
+              onChange={list.setPage}
             />
           </>
         )}

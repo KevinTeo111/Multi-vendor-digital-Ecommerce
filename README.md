@@ -174,6 +174,15 @@ PAID → download against a real Postgres. It runs when `TEST_DATABASE_URL` is s
 
 Conventions that keep the code easy to change:
 
+- **Responsive by default (web).** Pages are built from the primitives in `components/ui.tsx`, which
+  carry the mobile behaviour: `Table` turns each row into a labelled card below `md` (headers are
+  passed to every `Td` automatically), `FilterBar` stacks search and filters full width on phones,
+  `ListRow` puts date and reference above the title, `Modal` scrolls inside short screens, and form
+  controls use 16px text on phones so iOS does not zoom. Centered page containers use
+  `mx-auto w-full max-w-*`: without `w-full` a child of the flex-column layout shrinks to its widest
+  content and the page scrolls sideways.
+- **List pages use `usePagedList`** (`lib/use-fetch.ts`): one call holds the page, the filters and
+  the fetch, leaves empty filters out of the query and returns to page 1 when a filter changes.
 - **One responsibility per service.** `CheckoutService` owns order creation and the PENDING → PAID/FAILED
   transitions; `OrdersService` only reads. `ProductsService` delegates every status change to the
   transition table in `product-status.ts`.

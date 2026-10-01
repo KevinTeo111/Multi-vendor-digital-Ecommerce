@@ -61,7 +61,7 @@ export function SiteFooter() {
                     <li key={l.href + l.label}>
                       <Link
                         href={l.href}
-                        className="group inline-flex items-center gap-1 hover:text-white"
+                        className="group inline-flex items-center gap-1 py-1.5 hover:text-white"
                       >
                         <ArrowRightIcon size={12} className="arrow-nudge text-brand-500" />{' '}
                         {l.label}
