@@ -85,6 +85,8 @@ interface MpAuthorizedPayment {
 const DEFAULT_API_URL = 'https://api.mercadopago.com';
 const SETTLEMENT_CURRENCY = 'BRL'; // Brazilian accounts charge in BRL only
 const DEFAULT_SIGNATURE_TOLERANCE_MS = 60 * 60 * 1000;
+/** Order numbers look like ORD-20260930-ABC123 (see generateOrderNumber). */
+const ORDER_REFERENCE = /^ORD-/;
 const FINAL_FAILURE_STATUSES = new Set(['rejected', 'cancelled']);
 const HANDLED_TOPICS = new Set([
   'payment',
@@ -361,6 +363,10 @@ export class MercadoPagoPaymentGateway implements PaymentGateway {
     const eventId = `payment:${payment.id}:${payment.status}`;
     const orderNumber = payment.external_reference ?? undefined;
     if (!orderNumber) return { kind: 'ignored', eventId, type: 'payment:no_reference' };
+    // Subscription charges also arrive as payments; their reference is the vendor id, not an order
+    // number. They are handled through subscription_authorized_payment instead.
+    if (!ORDER_REFERENCE.test(orderNumber))
+      return { kind: 'ignored', eventId, type: 'payment:not_an_order' };
 
     switch (payment.status) {
       case 'approved':

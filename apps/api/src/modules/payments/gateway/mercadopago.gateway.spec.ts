@@ -377,6 +377,22 @@ describe('MercadoPagoPaymentGateway webhooks', () => {
     });
   });
 
+  it('ignores subscription charges that arrive as plain payments', async () => {
+    const { gw } = gateway({
+      'GET /v1/payments/88': {
+        id: 88,
+        status: 'approved',
+        external_reference: 'cmuovpqlm001ejv1xaqoz86be',
+      },
+    });
+    const n = signed('payment', '88');
+    await expect(gw.parseWebhook(n.raw, n.headers, n.query)).resolves.toEqual({
+      kind: 'ignored',
+      eventId: 'payment:88:approved',
+      type: 'payment:not_an_order',
+    });
+  });
+
   it('ignores ids the API does not know (panel simulator) and unknown topics', async () => {
     const { gw } = gateway();
     const missing = signed('payment', '999');
