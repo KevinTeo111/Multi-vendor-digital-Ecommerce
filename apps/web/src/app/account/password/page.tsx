@@ -1,19 +1,22 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { PageContainer } from '@/components/page-container';
 import { RequireRole } from '@/components/require-role';
+import { useToast } from '@/components/toasts';
 import { Alert, Button, Card, Field, Input, PageHeader } from '@/components/ui';
 import { useT } from '@/i18n/client';
 import { api, ApiError, setTokens } from '@/lib/api';
 
 function ChangePasswordForm() {
   const t = useT();
+  const router = useRouter();
+  const toast = useToast();
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const submit = async (e: FormEvent) => {
@@ -24,7 +27,6 @@ function ChangePasswordForm() {
     }
     setLoading(true);
     setError(null);
-    setDone(false);
     try {
       // The server revokes every session and hands this one a fresh pair.
       const tokens = await api<{ accessToken: string; refreshToken: string }>(
@@ -32,10 +34,9 @@ function ChangePasswordForm() {
         { method: 'POST', body: { currentPassword: current, newPassword: next } },
       );
       setTokens(tokens);
-      setCurrent('');
-      setNext('');
-      setConfirm('');
-      setDone(true);
+      // The toast lives in the root layout, so the confirmation survives the navigation.
+      toast.push(t('auth.changeDone'), { tone: 'success' });
+      router.push('/');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : t('auth.changeFailed'));
     } finally {
@@ -49,7 +50,6 @@ function ChangePasswordForm() {
       <Card>
         <form onSubmit={submit} className="space-y-4">
           {error && <Alert tone="error">{error}</Alert>}
-          {done && <Alert tone="success">{t('auth.changeDone')}</Alert>}
           <Field label={t('auth.currentPassword')}>
             <Input
               type="password"
