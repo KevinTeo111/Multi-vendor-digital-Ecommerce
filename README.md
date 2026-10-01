@@ -210,8 +210,8 @@ the rest of the API never imports a provider SDK.
 
 Required variables: `MP_ACCESS_TOKEN` (`TEST-…` / `APP_USR-…`), `MP_WEBHOOK_SECRET`, and
 `API_URL`. Preferences carry no `notification_url`: the webhook URL is configured in the panel of the
-application that owns the access token (sandbox: the seller test user's app; production: the main app,
-Production tab), so every delivery is signed with that app's secret and visible in its delivery history.
+application that owns the access token, always on its **Production** tab (sandbox: the seller test
+user's app, whose `APP_USR-` credentials count as production; go-live: the main app), so every delivery is signed with that app's secret and visible in its delivery history.
 
 ### Stripe (kept as an alternative; Pix is invite-only for Brazilian accounts)
 
