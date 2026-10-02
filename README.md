@@ -119,10 +119,29 @@ the command resets the demo accounts.
 - Reset tokens are signed JWTs (own key, derived from `JWT_REFRESH_SECRET`) carrying a fingerprint of
   the password hash they were issued for. Changing the password changes the fingerprint, so each link
   works once and every older link dies with it. No table, no cleanup job.
-- E-mail goes through the `MAILER` interface (`apps/api/src/modules/mail`). Until a provider is
-  configured the fallback sends nothing: in development it logs the link, in production it logs only
-  that a reset was requested. Admins can generate a link from **Admin → Users → Reset link** and hand
-  it to the user privately (not available for admin accounts).
+- The reset link is e-mailed (see **Automatic e-mails**). Admins can also generate a link from
+  **Admin → Users → Reset link** and hand it to the user privately (not available for admin accounts).
+
+## Automatic e-mails
+
+Sent through Brevo's transactional API when `BREVO_API_KEY` and `MAIL_FROM_EMAIL` are set
+(`apps/api/src/modules/mail`). Without a key nothing is sent: development logs the message,
+production logs only that it was skipped (a reset link must never reach the logs).
+
+| E-mail | To | When |
+| --- | --- | --- |
+| Password reset | the account | `POST /auth/forgot-password` |
+| Order confirmed (items, purchase codes, total) | buyer | the payment is confirmed |
+| Order refunded | buyer | an admin refunds the order (not sent for chargebacks) |
+| Product approved / not approved / blocked | seller | the admin decision |
+| Withdrawal approved / paid / rejected / failed | seller | each withdrawal step |
+
+- Each e-mail is triggered once, at the same point as the realtime notification, after the change is
+  committed. Sending runs in the background: a provider failure is logged and never undoes or delays
+  the payment, review or withdrawal. There is no retry queue.
+- Texts are in Brazilian Portuguese (`templates.ts`); `MAIL_FROM_NAME` is the brand shown in the
+  sender, header and footer. In Brevo the sender address must be a verified sender, and the domain
+  should be authenticated (DKIM/DMARC) so messages do not land in spam.
 
 ## Background jobs and limits
 
@@ -327,7 +346,6 @@ Nothing Stripe-related is exposed to the browser.
 
 ## Not in the MVP (planned next)
 
-- Email notifications (product approved/rejected, order paid, withdrawal status).
 - Background jobs on Redis/BullMQ (ledger release, subscription expiry, webhook replay).
 - Multi-currency.
 - Server-side rendering of authenticated pages with cookie sessions (currently JWT in the browser).

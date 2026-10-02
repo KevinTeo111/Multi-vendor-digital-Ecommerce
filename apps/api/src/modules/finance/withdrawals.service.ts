@@ -11,6 +11,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { PaginationDto, findPage } from '../../common/dto/pagination.dto';
 import { AuditService } from '../audit/audit.service';
 import { PAYMENT_GATEWAY, PaymentGateway } from '../payments/gateway/payment-gateway.interface';
+import { NotificationsService } from '../mail/notifications.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { SettingsService } from '../settings/settings.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
@@ -35,6 +36,7 @@ export class WithdrawalsService {
     private readonly subscriptions: SubscriptionsService,
     private readonly audit: AuditService,
     private readonly realtime: RealtimeService,
+    private readonly notifications: NotificationsService,
     @Inject(PAYMENT_GATEWAY) private readonly gateway: PaymentGateway,
   ) {}
 
@@ -46,6 +48,7 @@ export class WithdrawalsService {
     rejectionReason?: string | null;
     adminNotes?: string | null;
   }) {
+    this.notifications.withdrawalStatus(w.id);
     this.realtime.toVendor(w.vendorId, 'withdrawal.status', {
       withdrawalId: w.id,
       status: w.status,

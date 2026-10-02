@@ -11,6 +11,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { slugify, slugWithSuffix } from '../../common/utils/slug';
 import { findPage, mapPage } from '../../common/dto/pagination.dto';
 import { AuditService } from '../audit/audit.service';
+import { NotificationsService } from '../mail/notifications.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { SettingsService } from '../settings/settings.service';
 import { StorageService } from '../storage/storage.service';
@@ -62,6 +63,7 @@ export class ProductsService {
     private readonly audit: AuditService,
     private readonly realtime: RealtimeService,
     private readonly settings: SettingsService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   /** The seller's own price and the listed price the buyer pays (fee built in). */
@@ -409,6 +411,7 @@ export class ProductsService {
       entityId: productId,
       metadata,
     });
+    this.notifications.productStatus(updated.id);
     this.realtime.toVendor(updated.vendorId, 'product.status', {
       productId: updated.id,
       title: updated.title,

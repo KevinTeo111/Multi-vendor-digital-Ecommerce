@@ -6,7 +6,7 @@ import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { AuthService } from './auth.service';
-import type { Mailer } from '../mail/mailer';
+import type { NotificationsService } from '../mail/notifications.service';
 
 interface FakeUser {
   id: string;
@@ -62,14 +62,19 @@ async function setup(overrides: Partial<FakeUser> = {}) {
   };
   const audit = { log: jest.fn(async () => undefined) };
   const sent: string[] = [];
-  const mailer: Mailer = {
-    delivers: false,
-    sendPasswordReset: jest.fn(async (_to, url: string) => {
+  const notifications = {
+    passwordReset: jest.fn((_to: unknown, url: string) => {
       sent.push(url);
     }),
-  };
+  } as unknown as NotificationsService;
   const jwt = new JwtService({ secret: process.env.JWT_ACCESS_SECRET, signOptions: {} });
-  const service = new AuthService(prisma as never, jwt, users as never, audit as never, mailer);
+  const service = new AuthService(
+    prisma as never,
+    jwt,
+    users as never,
+    audit as never,
+    notifications,
+  );
   const tokenFrom = (url: string) => decodeURIComponent(url.split('token=')[1]);
   return { service, user, refreshTokens, sent, audit, tokenFrom, jwt };
 }

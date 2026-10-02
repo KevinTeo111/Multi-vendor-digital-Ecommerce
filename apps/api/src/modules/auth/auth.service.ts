@@ -17,7 +17,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { slugify, slugWithSuffix } from '../../common/utils/slug';
 import type { AuthUser, JwtPayload } from '../../common/types/auth-user';
 import { AuditService } from '../audit/audit.service';
-import { MAILER, type Mailer } from '../mail/mailer';
+import { NotificationsService } from '../mail/notifications.service';
 import { UsersService, publicUserSelect } from '../users/users.service';
 import { ChangePasswordDto, LoginDto, RegisterDto } from './dto/auth.dto';
 import {
@@ -39,7 +39,7 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly users: UsersService,
     private readonly audit: AuditService,
-    @Inject(MAILER) private readonly mailer: Mailer,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -152,11 +152,8 @@ export class AuthService {
     const user = await this.users.findByEmail(email);
     if (user && user.status === UserStatus.ACTIVE) {
       const { url, expiresAt } = await this.createResetLink(user);
-      await this.mailer
-        .sendPasswordReset({ email: user.email, name: user.name }, url, expiresAt)
-        .catch((err: Error) =>
-          this.logger.error(`Password reset mail to ${user.email} failed: ${err.message}`),
-        );
+      // Not awaited: the answer must take the same time whether or not the e-mail is registered.
+      this.notifications.passwordReset({ email: user.email, name: user.name }, url, expiresAt);
       await this.audit.log({
         actorId: user.id,
         action: 'auth.password_reset_requested',

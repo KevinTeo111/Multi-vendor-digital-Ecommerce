@@ -18,6 +18,7 @@ import { CartService } from '../cart/cart.service';
 import { withoutCoupon } from '../coupons/coupon-math';
 import { CouponsService } from '../coupons/coupons.service';
 import { PAYMENT_GATEWAY, PaymentGateway } from '../payments/gateway/payment-gateway.interface';
+import { NotificationsService } from '../mail/notifications.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { SettingsService } from '../settings/settings.service';
 import { removeReviewsForOrderItems } from '../reviews/rating';
@@ -49,6 +50,7 @@ export class CheckoutService {
     private readonly audit: AuditService,
     private readonly realtime: RealtimeService,
     private readonly coupons: CouponsService,
+    private readonly notifications: NotificationsService,
     @Inject(PAYMENT_GATEWAY) private readonly gateway: PaymentGateway,
   ) {}
 
@@ -311,6 +313,7 @@ export class CheckoutService {
     });
 
     if (!paid) return;
+    this.notifications.orderPaid(paid.id);
     this.realtime.toUser(paid.buyerId, 'order.paid', {
       orderId: paid.id,
       orderNumber: paid.orderNumber,
@@ -475,6 +478,8 @@ export class CheckoutService {
     });
 
     if (!refunded) return;
+    // A chargeback is opened by the buyer at their bank, so only platform refunds are announced.
+    if (!opts.chargeback) this.notifications.orderRefunded(refunded.id);
     this.realtime.toUser(refunded.buyerId, 'order.refunded', {
       orderId: refunded.id,
       orderNumber: refunded.orderNumber,

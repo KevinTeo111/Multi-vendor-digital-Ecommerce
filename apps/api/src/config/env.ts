@@ -37,6 +37,12 @@ const schema = z.object({
   MP_ACCESS_TOKEN: z.string().optional(),
   MP_WEBHOOK_SECRET: z.string().optional(),
 
+  /** Brevo API key (xkeysib-…). Without it no e-mail is sent: messages are only logged. */
+  BREVO_API_KEY: z.string().optional(),
+  /** Sender address; it must be a verified sender (or on an authenticated domain) in Brevo. */
+  MAIL_FROM_EMAIL: z.string().email().optional(),
+  MAIL_FROM_NAME: z.string().min(1).default('DigiMarket'),
+
   /** In-process housekeeping timers (settle pending orders, expire lapsed plans). */
   JOBS_ENABLED: z
     .enum(['true', 'false'])
