@@ -139,6 +139,13 @@ export default function VendorFinancePage() {
                   <Td className="text-xs">{formatDate(w.paidAt)}</Td>
                   <Td className="text-xs text-slate-500">
                     {w.rejectionReason ?? w.adminNotes ?? ''}
+                    {w.status === 'PAID' && w.gatewayTransferId?.startsWith('manual:') && (
+                      <div className="mt-1 break-all font-mono text-slate-600">
+                        {t('admin.paymentReference', {
+                          reference: w.gatewayTransferId.slice('manual:'.length),
+                        })}
+                      </div>
+                    )}
                   </Td>
                 </tr>
               ))}
