@@ -340,10 +340,17 @@ describeIfDb('Checkout, webhook and download (integration)', () => {
       where: { vendorId: vendor.id },
       orderBy: { createdAt: 'asc' },
     });
-    expect(entries.map((e) => [e.type, e.amountCents])).toEqual([
-      ['SALE_CREDIT', 2000],
-      ['REFUND_DEBIT', -2000],
+    expect(entries.map((e) => [e.type, e.status, e.amountCents])).toEqual([
+      ['SALE_CREDIT', 'PENDING', 2000],
+      ['REFUND_DEBIT', 'PENDING', -2000],
     ]);
+    // The credit was still on hold, so it is reversed on hold: nothing becomes negative.
+    expect(entries[1].availableAt?.getTime()).toBe(entries[0].availableAt?.getTime());
+    const { LedgerService } = await import('../modules/finance/ledger.service');
+    expect(await app.get(LedgerService).getBalance(vendor.id)).toEqual({
+      pendingCents: 0,
+      availableCents: 0,
+    });
     expect((await prisma.product.findUniqueOrThrow({ where: { id: product.id } })).salesCount).toBe(
       0,
     );

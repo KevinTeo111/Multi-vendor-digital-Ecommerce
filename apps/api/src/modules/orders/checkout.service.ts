@@ -352,13 +352,21 @@ export class CheckoutService {
         include: { items: true },
       });
       for (const item of order.items) {
+        // Reverse the credit where it sits: a credit still on hold is reversed on hold with the
+        // same release date (both mature together and net to zero), so a refund never pushes the
+        // available balance negative for money the seller could not withdraw yet.
+        const credit = await tx.ledgerEntry.findFirst({
+          where: { orderItemId: item.id, type: LedgerEntryType.SALE_CREDIT },
+          select: { status: true, availableAt: true },
+        });
+        const onHold = credit?.status === LedgerEntryStatus.PENDING;
         await tx.ledgerEntry.create({
           data: {
             vendorId: item.vendorId,
             type: LedgerEntryType.REFUND_DEBIT,
-            status: LedgerEntryStatus.AVAILABLE,
+            status: onHold ? LedgerEntryStatus.PENDING : LedgerEntryStatus.AVAILABLE,
             amountCents: -item.vendorNetCents,
-            availableAt: new Date(),
+            availableAt: onHold ? credit.availableAt : new Date(),
             orderItemId: item.id,
             description: `${opts.chargeback ? 'Chargeback' : 'Refund'}: ${item.productTitle}`,
           },
