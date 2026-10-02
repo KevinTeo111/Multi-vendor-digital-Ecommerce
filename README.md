@@ -57,6 +57,13 @@ The API reads the repo-root `.env`. Next.js reads `apps/web/.env.local`; the def
 6. Admin approves at `/admin/withdrawals`. In the default **manual payout mode** the admin then sends
    the money by PIX or bank transfer and clicks **Mark as paid**. Switching `finance.payout_mode` to
    `gateway` makes approval trigger a transfer through the payment provider instead.
+   In manual mode the platform never contacts Mercado Pago for payouts: **Mark as paid** records a
+   transfer the admin already made outside the platform, so no webhook or provider event follows.
+   The admin screen requires the PIX end-to-end ID or bank receipt number, shows it on the withdrawal,
+   and flags any older withdrawal recorded without one. Every withdrawal step is a single conditional
+   update (`WithdrawalsService.transition`): two admins or a double click can never both apply, so a
+   withdrawal can never be paid and have its hold released. Each step is written to the server log.
+   Gateway mode needs the provider's payout API; Mercado Pago's adapter does not implement it yet.
 
 ### Demo content
 

@@ -108,6 +108,9 @@ export class WithdrawalsService {
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted },
     );
+    this.logger.log(
+      `Withdrawal ${withdrawal.id} requested: ${withdrawal.amountCents} cents by vendor ${vendorId}`,
+    );
     this.realtime.toAdmins('withdrawal.requested', {
       withdrawalId: withdrawal.id,
       vendorId,
@@ -188,15 +191,15 @@ export class WithdrawalsService {
       );
     }
     if (payoutMode === 'manual') {
-      const updated = await this.prisma.withdrawal.update({
-        where: { id },
-        data: {
-          status: WithdrawalStatus.APPROVED,
-          reviewedAt: new Date(),
-          reviewedById: adminId,
-          adminNotes: notes,
-        },
+      const updated = await this.transition(id, [WithdrawalStatus.REQUESTED], {
+        status: WithdrawalStatus.APPROVED,
+        reviewedAt: new Date(),
+        reviewedById: adminId,
+        adminNotes: notes,
       });
+      this.logger.log(
+        `Withdrawal ${id} approved for manual payout: ${withdrawal.amountCents} cents to vendor ${withdrawal.vendorId}`,
+      );
       await this.audit.log({
         actorId: adminId,
         action: 'withdrawal.approve',
@@ -223,15 +226,12 @@ export class WithdrawalsService {
       });
     }
 
-    // Mark approved before calling the gateway so a crash mid-transfer never re-pays.
-    await this.prisma.withdrawal.update({
-      where: { id },
-      data: {
-        status: WithdrawalStatus.APPROVED,
-        reviewedAt: new Date(),
-        reviewedById: adminId,
-        adminNotes: notes,
-      },
+    // Claim it before calling the gateway: a crash mid-transfer or a second click never re-pays.
+    await this.transition(id, [WithdrawalStatus.REQUESTED], {
+      status: WithdrawalStatus.APPROVED,
+      reviewedAt: new Date(),
+      reviewedById: adminId,
+      adminNotes: notes,
     });
 
     let transfer;
@@ -285,23 +285,29 @@ export class WithdrawalsService {
     if (withdrawal.status === WithdrawalStatus.REQUESTED)
       await this.assertBalanceNotNegative(withdrawal.vendorId);
 
-    const updated = await this.prisma.withdrawal.update({
-      where: { id },
-      data: {
-        status: WithdrawalStatus.PAID,
-        paidAt: new Date(),
-        reviewedAt: withdrawal.reviewedAt ?? new Date(),
-        reviewedById: withdrawal.reviewedById ?? adminId,
-        gatewayTransferId: reference ? `manual:${reference.trim()}` : 'manual',
-        adminNotes: notes ?? withdrawal.adminNotes,
-      },
+    const ref = reference?.trim() || null;
+    const updated = await this.transition(id, allowed, {
+      status: WithdrawalStatus.PAID,
+      paidAt: new Date(),
+      reviewedAt: withdrawal.reviewedAt ?? new Date(),
+      reviewedById: withdrawal.reviewedById ?? adminId,
+      gatewayTransferId: ref ? `manual:${ref}` : 'manual',
+      adminNotes: notes ?? withdrawal.adminNotes,
     });
+    if (ref)
+      this.logger.log(
+        `Withdrawal ${id} marked paid: ${withdrawal.amountCents} cents to vendor ${withdrawal.vendorId}, reference ${ref}`,
+      );
+    else
+      this.logger.warn(
+        `Withdrawal ${id} marked paid WITHOUT a payment reference: ${withdrawal.amountCents} cents to vendor ${withdrawal.vendorId}`,
+      );
     await this.audit.log({
       actorId: adminId,
       action: 'withdrawal.mark_paid',
       entityType: 'Withdrawal',
       entityId: id,
-      metadata: { amountCents: withdrawal.amountCents, reference: reference ?? null },
+      metadata: { amountCents: withdrawal.amountCents, reference: ref },
     });
     this.notify(updated);
     return updated;
@@ -315,21 +321,28 @@ export class WithdrawalsService {
         if (withdrawal.status !== WithdrawalStatus.REQUESTED) {
           throw new BadRequestException('Only requested withdrawals can be rejected');
         }
-        const updated = await tx.withdrawal.update({
-          where: { id },
-          data: {
+        // Only a withdrawal that is still REQUESTED gives its hold back; a concurrent approve or
+        // mark-paid wins otherwise, and the money can never be both paid and released.
+        const updated = await this.transition(
+          id,
+          [WithdrawalStatus.REQUESTED],
+          {
             status: WithdrawalStatus.REJECTED,
             reviewedAt: new Date(),
             reviewedById: adminId,
             rejectionReason: reason,
           },
-        });
+          tx,
+        );
         await this.releaseHold(
           tx,
           withdrawal.vendorId,
           id,
           withdrawal.amountCents,
           'Withdrawal rejected',
+        );
+        this.logger.log(
+          `Withdrawal ${id} rejected; ${withdrawal.amountCents} cents returned to vendor ${withdrawal.vendorId}`,
         );
         await this.audit.log(
           {
@@ -369,11 +382,13 @@ export class WithdrawalsService {
     return this.prisma
       .$transaction(async (tx) => {
         const withdrawal = await tx.withdrawal.findUniqueOrThrow({ where: { id } });
-        if (withdrawal.status === WithdrawalStatus.FAILED) return withdrawal;
-        const updated = await tx.withdrawal.update({
-          where: { id },
+        const claimed = await tx.withdrawal.updateMany({
+          where: { id, status: WithdrawalStatus.APPROVED },
           data: { status: WithdrawalStatus.FAILED, adminNotes: reason },
         });
+        if (claimed.count === 0) return withdrawal; // already paid, failed or never approved
+        const updated = await tx.withdrawal.findUniqueOrThrow({ where: { id } });
+        this.logger.warn(`Withdrawal ${id} failed at the provider: ${reason}`);
         await this.releaseHold(
           tx,
           withdrawal.vendorId,
@@ -387,6 +402,25 @@ export class WithdrawalsService {
         if (updated.status === WithdrawalStatus.FAILED) this.notify(updated);
         return updated;
       });
+  }
+
+  /**
+   * Moves a withdrawal to a new status only if it is still in one of the expected ones (a single
+   * conditional UPDATE). Two admins, a double click or a provider callback racing an admin action
+   * can therefore never apply two transitions to the same withdrawal.
+   */
+  private async transition(
+    id: string,
+    from: WithdrawalStatus[],
+    data: Prisma.WithdrawalUncheckedUpdateManyInput,
+    tx: Prisma.TransactionClient = this.prisma,
+  ) {
+    const claimed = await tx.withdrawal.updateMany({ where: { id, status: { in: from } }, data });
+    if (claimed.count === 0)
+      throw new BadRequestException(
+        'This withdrawal was already processed by another action. Reload the list to see its current status.',
+      );
+    return tx.withdrawal.findUniqueOrThrow({ where: { id } });
   }
 
   /**

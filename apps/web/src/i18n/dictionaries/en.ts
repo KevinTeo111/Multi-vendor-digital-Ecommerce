@@ -533,8 +533,11 @@ const en = {
     markPaidTitle: 'Mark withdrawal as paid',
     markPaidText:
       'Confirm that you sent {amount} to {vendor}. The vendor will see the withdrawal as paid.',
-    reference: 'Transaction reference (optional)',
-    referenceHint: 'PIX end-to-end ID or bank receipt number',
+    reference: 'Payment reference',
+    referenceHint:
+      'Send the money first, then paste the PIX end-to-end ID (E2E…) or the bank receipt number. It is shown to the seller.',
+    paymentReference: 'Ref: {reference}',
+    noPaymentReference: 'No payment reference recorded',
     notes: 'Notes (optional)',
     confirmPayment: 'Confirm payment',
     rejectWithdrawal: 'Reject withdrawal',

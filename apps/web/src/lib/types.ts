@@ -292,6 +292,8 @@ export interface Withdrawal {
   requestedAt: string;
   reviewedAt: string | null;
   paidAt: string | null;
+  /** "manual:<receipt>" for manual payouts, the provider's transfer id otherwise. */
+  gatewayTransferId: string | null;
   rejectionReason: string | null;
   adminNotes: string | null;
   vendor?: { id: string; storeName: string; slug: string; payoutDetails: PayoutDetails | null };

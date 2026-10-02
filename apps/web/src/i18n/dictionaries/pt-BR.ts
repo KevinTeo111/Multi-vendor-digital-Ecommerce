@@ -529,8 +529,11 @@ const ptBR: Dictionary = {
     markPaidTitle: 'Marcar saque como pago',
     markPaidText:
       'Confirme que você enviou {amount} para {vendor}. O vendedor verá o saque como pago.',
-    reference: 'Referência da transação (opcional)',
-    referenceHint: 'ID end-to-end do PIX ou número do comprovante',
+    reference: 'Referência do pagamento',
+    referenceHint:
+      'Primeiro envie o dinheiro, depois cole o ID end-to-end do PIX (E2E…) ou o número do comprovante bancário. Ele é exibido ao vendedor.',
+    paymentReference: 'Ref.: {reference}',
+    noPaymentReference: 'Nenhuma referência de pagamento registrada',
     notes: 'Observações (opcional)',
     confirmPayment: 'Confirmar pagamento',
     rejectWithdrawal: 'Rejeitar saque',

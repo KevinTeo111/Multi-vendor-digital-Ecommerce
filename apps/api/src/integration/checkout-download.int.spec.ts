@@ -367,4 +367,94 @@ describeIfDb('Checkout, webhook and download (integration)', () => {
     ).toBe(400);
     expect(refundKeys).toHaveLength(1);
   });
+
+  it('applies exactly one admin action to a withdrawal, even when two arrive at once', async () => {
+    const adminLogin = await call('POST', '/auth/login', {
+      body: { email: 'admin@it.test', password: 'admin-password-1' },
+    });
+    const admin = adminLogin.data.accessToken as string;
+    const vendor = await prisma.vendor.findUniqueOrThrow({ where: { slug: 'it-store' } });
+
+    // A requested withdrawal with its hold, as WithdrawalsService.request() leaves it, funded by
+    // an available credit of the same amount so the seller's balance never goes negative.
+    const requested = async (amountCents: number) => {
+      await prisma.ledgerEntry.create({
+        data: {
+          vendorId: vendor.id,
+          type: 'ADJUSTMENT',
+          status: 'AVAILABLE',
+          amountCents,
+          description: 'Test funds',
+        },
+      });
+      const w = await prisma.withdrawal.create({
+        data: { vendorId: vendor.id, amountCents, status: 'REQUESTED' },
+      });
+      await prisma.ledgerEntry.create({
+        data: {
+          vendorId: vendor.id,
+          type: 'WITHDRAWAL_HOLD',
+          status: 'AVAILABLE',
+          amountCents: -amountCents,
+          withdrawalId: w.id,
+          description: 'Withdrawal requested',
+        },
+      });
+      return w.id;
+    };
+    const releases = (withdrawalId: string) =>
+      prisma.ledgerEntry.count({ where: { withdrawalId, type: 'WITHDRAWAL_RELEASE' } });
+
+    // Reject and "mark as paid" at the same moment: one wins, and money is never both
+    // paid out and returned to the seller's balance.
+    for (let round = 0; round < 5; round++) {
+      const id = await requested(10_000);
+      const [rejected, paid] = await Promise.all([
+        call('POST', `/admin/finance/withdrawals/${id}/reject`, {
+          token: admin,
+          body: { reason: 'Race test' },
+        }),
+        call('POST', `/admin/finance/withdrawals/${id}/mark-paid`, {
+          token: admin,
+          body: { reference: `E2E-RACE-${round}` },
+        }),
+      ]);
+      const statuses = [rejected.status, paid.status].sort();
+      expect(statuses).toEqual([201, 400]);
+      const final = await prisma.withdrawal.findUniqueOrThrow({ where: { id } });
+      if (final.status === 'REJECTED') {
+        expect(rejected.status).toBe(201);
+        expect(await releases(id)).toBe(1);
+        expect(final.paidAt).toBeNull();
+      } else {
+        expect(final.status).toBe('PAID');
+        expect(paid.status).toBe(201);
+        expect(await releases(id)).toBe(0);
+        expect(final.gatewayTransferId).toBe(`manual:E2E-RACE-${round}`);
+      }
+      const loser = rejected.status === 400 ? rejected : paid;
+      // Refused either by the status check or, when both requests truly overlap, by the
+      // conditional update; either way with a message the admin understands.
+      expect(loser.data.message).toMatch(/already processed|cannot be|Only requested/);
+    }
+
+    // Two "mark as paid" clicks at once: recorded once, with the trimmed reference.
+    const id = await requested(10_000);
+    const both = await Promise.all(
+      [1, 2].map(() =>
+        call('POST', `/admin/finance/withdrawals/${id}/mark-paid`, {
+          token: admin,
+          body: { reference: '  E2E-DOUBLE  ' },
+        }),
+      ),
+    );
+    expect(both.map((r) => r.status).sort()).toEqual([201, 400]);
+    expect(await prisma.withdrawal.findUniqueOrThrow({ where: { id } })).toMatchObject({
+      status: 'PAID',
+      gatewayTransferId: 'manual:E2E-DOUBLE',
+    });
+    expect(
+      await prisma.auditLog.count({ where: { entityId: id, action: 'withdrawal.mark_paid' } }),
+    ).toBe(1);
+  });
 });

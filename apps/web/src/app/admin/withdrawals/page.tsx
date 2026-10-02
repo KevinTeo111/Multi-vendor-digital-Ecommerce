@@ -61,7 +61,7 @@ export default function AdminWithdrawalsPage() {
     const ok = await action.run(() =>
       api(`/admin/finance/withdrawals/${paying.id}/mark-paid`, {
         method: 'POST',
-        body: { reference: reference || undefined, notes: notes || undefined },
+        body: { reference: reference.trim(), notes: notes || undefined },
       }),
     );
     if (ok !== undefined) {
@@ -176,6 +176,18 @@ export default function AdminWithdrawalsPage() {
                         {t('admin.paidOn', { date: formatDate(w.paidAt) })}
                       </div>
                     )}
+                    {w.status === 'PAID' && w.gatewayTransferId?.startsWith('manual:') && (
+                      <div className="mt-1 break-all font-mono text-xs text-slate-600">
+                        {t('admin.paymentReference', {
+                          reference: w.gatewayTransferId.slice('manual:'.length),
+                        })}
+                      </div>
+                    )}
+                    {w.status === 'PAID' && w.gatewayTransferId === 'manual' && (
+                      <div className="mt-1 text-xs font-medium text-amber-600">
+                        {t('admin.noPaymentReference')}
+                      </div>
+                    )}
                   </Td>
                   <Td>
                     <div className="flex flex-wrap gap-1">
@@ -226,6 +238,7 @@ export default function AdminWithdrawalsPage() {
                 value={reference}
                 onChange={(e) => setReference(e.target.value)}
                 maxLength={120}
+                required
               />
             </Field>
             <Field label={t('admin.notes')}>
@@ -235,7 +248,12 @@ export default function AdminWithdrawalsPage() {
               <Button variant="secondary" onClick={() => setPaying(null)}>
                 {t('common.cancel')}
               </Button>
-              <Button loading={action.busy} onClick={markPaid} arrow>
+              <Button
+                loading={action.busy}
+                onClick={markPaid}
+                disabled={reference.trim().length < 4}
+                arrow
+              >
                 {t('admin.confirmPayment')}
               </Button>
             </div>
