@@ -84,14 +84,16 @@ describeIfDb('Checkout, webhook and download (integration)', () => {
         preferenceBodies.push(JSON.parse(String(init.body)));
         return new Response(JSON.stringify({ id: 'pref-1', init_point: 'https://mp.test/pay' }));
       }
-      if (path === `/v1/payments/${PAYMENT_ID}/refunds` && init?.method === 'POST') {
+      if (/^\/v1\/payments\/\d+\/refunds$/.test(path) && init?.method === 'POST') {
         refundKeys.push(new Headers(init.headers).get('X-Idempotency-Key'));
         return new Response(JSON.stringify({ id: 4242, status: 'approved' }), { status: 201 });
       }
-      if (path === `/v1/payments/${PAYMENT_ID}`) {
+      // Any payment id resolves to the most recent order (one payment per test order).
+      const paymentId = path.match(/^\/v1\/payments\/(\d+)$/)?.[1];
+      if (paymentId) {
         return new Response(
           JSON.stringify({
-            id: Number(PAYMENT_ID),
+            id: Number(paymentId),
             status: paymentStatus,
             external_reference: preferenceBodies.at(-1)?.external_reference,
             payment_type_id: 'bank_transfer',
@@ -463,5 +465,197 @@ describeIfDb('Checkout, webhook and download (integration)', () => {
     expect(
       await prisma.auditLog.count({ where: { entityId: id, action: 'withdrawal.mark_paid' } }),
     ).toBe(1);
+  });
+
+  it('sells an Extended licence with a coupon, verifies its code, and handles its review', async () => {
+    const { listPriceCents, splitSale } = await import('@marketplace/shared');
+    const bcrypt = await import('bcryptjs');
+    const login = async (email: string, password: string) =>
+      (await call('POST', '/auth/login', { body: { email, password } })).data.accessToken as string;
+    const admin = await login('admin@it.test', 'admin-password-1');
+
+    // The seller from the first test, now able to log in.
+    await prisma.user.update({
+      where: { email: 'seller@it.test' },
+      data: { passwordHash: await bcrypt.hash('seller-password-1', 4) },
+    });
+    const seller = await login('seller@it.test', 'seller-password-1');
+    const vendor = await prisma.vendor.findUniqueOrThrow({ where: { slug: 'it-store' } });
+    const category = await prisma.category.findUniqueOrThrow({ where: { slug: 'books' } });
+
+    // A product with Regular 40,00 and Extended 100,00 (seller prices; 5% fee built in).
+    const regular = listPriceCents(4000, 500);
+    const extended = listPriceCents(10_000, 500);
+    const product = await prisma.product.create({
+      data: {
+        vendorId: vendor.id,
+        categoryId: category.id,
+        title: 'IT Template',
+        slug: 'it-template',
+        shortDescription: 'Short',
+        description: 'Long',
+        basePriceCents: 4000,
+        priceCents: regular,
+        extendedBasePriceCents: 10_000,
+        extendedPriceCents: extended,
+        status: 'APPROVED',
+        publishedAt: new Date(),
+        files: {
+          create: {
+            storageKey: 'products/it/template.zip',
+            fileName: 'template.zip',
+            sizeBytes: 99,
+            mimeType: 'application/zip',
+          },
+        },
+      },
+    });
+
+    // Platform coupon: 10% off, once per buyer.
+    const coupon = await call('POST', '/admin/coupons', {
+      token: admin,
+      body: { code: 'save10', type: 'PERCENT', value: 1000, perBuyerLimit: 1 },
+    });
+    expect(coupon.status).toBe(201);
+    expect(coupon.data.code).toBe('SAVE10');
+
+    const buyer = await register('licence@it.test');
+    const cart = await call('POST', '/cart/items', {
+      token: buyer,
+      body: { productId: product.id, licenseType: 'EXTENDED' },
+    });
+    expect(cart.data.items[0]).toMatchObject({ licenseType: 'EXTENDED', unitPriceCents: extended });
+
+    // Preview and checkout agree: 10% of the Extended price, taken from the platform commission.
+    const discount = Math.floor((extended * 1000 + 5000) / 10_000);
+    const preview = await call('POST', '/checkout/preview', {
+      token: buyer,
+      body: { couponCode: 'save10' },
+    });
+    expect(preview.data).toMatchObject({
+      subtotalCents: extended,
+      discountCents: discount,
+      totalCents: extended - discount,
+      couponCode: 'SAVE10',
+    });
+    const checkout = await call('POST', '/checkout', {
+      token: buyer,
+      body: { couponCode: 'SAVE10' },
+    });
+    expect(checkout.status).toBe(201);
+    const order = checkout.data.order;
+    expect(order).toMatchObject({
+      subtotalCents: extended,
+      discountCents: discount,
+      totalCents: extended - discount,
+      couponCode: 'SAVE10',
+    });
+    const line = order.items[0];
+    const { commissionCents, vendorNetCents } = splitSale(10_000, 2000);
+    expect(line).toMatchObject({
+      licenseType: 'EXTENDED',
+      priceCents: extended,
+      discountCents: discount,
+      gatewayFeeCents: extended - 10_000,
+      commissionCents: commissionCents - discount,
+      vendorNetCents, // a platform coupon never touches the seller's money
+    });
+    expect(line.purchaseCode).toMatch(/^[0-9A-F]{4}(-[0-9A-F]{4}){3}$/);
+    expect(preferenceBodies.at(-1)).toMatchObject({
+      items: [expect.objectContaining({ unit_price: (extended - discount) / 100 })],
+    });
+
+    // The coupon is held by the pending order: a second use by the same buyer is refused.
+    const again = await call('POST', '/checkout/preview', {
+      token: buyer,
+      body: { couponCode: 'SAVE10' },
+    });
+    expect(again.status).toBe(400);
+    expect(again.data.message).toMatch(/already used/);
+
+    // Paid by webhook (a new payment id).
+    paymentStatus = 'approved';
+    expect(await deliver('888001')).toBe(200);
+    expect((await prisma.order.findUniqueOrThrow({ where: { id: order.id } })).status).toBe('PAID');
+
+    // The seller verifies the code, typed loosely.
+    const typed = line.purchaseCode.replace(/-/g, '').toLowerCase();
+    const verified = await call('GET', `/vendor/sales/verify?code=${typed}`, { token: seller });
+    expect(verified.data).toMatchObject({
+      valid: true,
+      licenseType: 'EXTENDED',
+      orderNumber: order.orderNumber,
+    });
+    expect(
+      (await call('GET', '/vendor/sales/verify?code=0000-0000-0000-0000', { token: seller }))
+        .status,
+    ).toBe(404);
+
+    // Reviews: only the buyer, rating kept in step on the product, moderation by the admin.
+    const stranger = await register('nosy@it.test');
+    expect(
+      (
+        await call('POST', '/reviews', {
+          token: stranger,
+          body: { orderItemId: line.id, rating: 1 },
+        })
+      ).status,
+    ).toBe(404);
+    const rated = async () =>
+      prisma.product.findUniqueOrThrow({
+        where: { id: product.id },
+        select: { ratingSum: true, ratingCount: true },
+      });
+    await call('POST', '/reviews', {
+      token: buyer,
+      body: { orderItemId: line.id, rating: 4, comment: 'Great' },
+    });
+    expect(await rated()).toEqual({ ratingSum: 4, ratingCount: 1 });
+    const review = await call('POST', '/reviews', {
+      token: buyer,
+      body: { orderItemId: line.id, rating: 5, comment: 'Even better' },
+    });
+    expect(await rated()).toEqual({ ratingSum: 5, ratingCount: 1 });
+    const publicList = await call('GET', '/products/it-template/reviews');
+    expect(publicList.data.items).toEqual([
+      expect.objectContaining({ rating: 5, comment: 'Even better', buyer: { name: 'licence' } }),
+    ]);
+    await call('PATCH', `/admin/reviews/${review.data.id}`, {
+      token: admin,
+      body: { hidden: true },
+    });
+    expect(await rated()).toEqual({ ratingSum: 0, ratingCount: 0 });
+    expect((await call('GET', '/products/it-template/reviews')).data.items).toEqual([]);
+    await call('PATCH', `/admin/reviews/${review.data.id}`, {
+      token: admin,
+      body: { hidden: false },
+    });
+    expect(await rated()).toEqual({ ratingSum: 5, ratingCount: 1 });
+    const reply = await call('POST', `/vendor/reviews/${review.data.id}/reply`, {
+      token: seller,
+      body: { reply: 'Thank you!' },
+    });
+    expect(reply.data.sellerReply).toBe('Thank you!');
+
+    // Coupon usage is counted once paid.
+    const coupons = await call('GET', '/admin/coupons', { token: admin });
+    expect(coupons.data.find((c: { code: string }) => c.code === 'SAVE10')._count.redemptions).toBe(
+      1,
+    );
+
+    // A refund removes the review and invalidates the purchase code.
+    expect(
+      (
+        await call('POST', `/admin/orders/${order.id}/refund`, {
+          token: admin,
+          body: { reason: 'Licence test refund' },
+        })
+      ).status,
+    ).toBe(201);
+    expect(await rated()).toEqual({ ratingSum: 0, ratingCount: 0 });
+    expect(await prisma.review.count({ where: { orderItemId: line.id } })).toBe(0);
+    expect(
+      (await call('GET', `/vendor/sales/verify?code=${line.purchaseCode}`, { token: seller })).data,
+    ).toMatchObject({ valid: false });
   });
 });

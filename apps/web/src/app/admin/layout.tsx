@@ -11,6 +11,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { href: '/admin/products', label: t('dashboard.navProductReview'), icon: 'check' },
     { href: '/admin/withdrawals', label: t('dashboard.navWithdrawals'), icon: 'wallet' },
     { href: '/admin/orders', label: t('dashboard.navOrders'), icon: 'receipt' },
+    { href: '/admin/reviews', label: t('dashboard.navReviews'), icon: 'star' },
+    { href: '/admin/coupons', label: t('dashboard.navCoupons'), icon: 'tag' },
     { href: '/admin/vendors', label: t('dashboard.navSellers'), icon: 'store' },
     { href: '/admin/users', label: t('dashboard.navUsers'), icon: 'users' },
     { href: '/admin/plans', label: t('dashboard.navPlans'), icon: 'card' },

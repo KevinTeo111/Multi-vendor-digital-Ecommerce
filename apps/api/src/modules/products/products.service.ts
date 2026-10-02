@@ -39,6 +39,9 @@ const publicCardSelect = {
   slug: true,
   shortDescription: true,
   priceCents: true,
+  extendedPriceCents: true,
+  ratingSum: true,
+  ratingCount: true,
   currency: true,
   thumbnailKey: true,
   salesCount: true,
@@ -65,6 +68,17 @@ export class ProductsService {
   private async pricing(basePriceCents: number) {
     const feeBps = await this.settings.get(SETTING_KEYS.GATEWAY_FEE_BPS);
     return { basePriceCents, priceCents: listPriceCents(basePriceCents, feeBps) };
+  }
+
+  /** Same for the optional Extended licence; null removes it. */
+  private async extendedPricing(extendedBasePriceCents: number | null) {
+    if (extendedBasePriceCents === null)
+      return { extendedBasePriceCents: null, extendedPriceCents: null };
+    const feeBps = await this.settings.get(SETTING_KEYS.GATEWAY_FEE_BPS);
+    return {
+      extendedBasePriceCents,
+      extendedPriceCents: listPriceCents(extendedBasePriceCents, feeBps),
+    };
   }
 
   // =========================================================================
@@ -122,6 +136,7 @@ export class ProductsService {
       shortDescription: dto.shortDescription.trim(),
       description: dto.description,
       ...(await this.pricing(dto.priceCents)),
+      ...(await this.extendedPricing(dto.extendedPriceCents ?? null)),
       demoUrl: dto.demoUrl,
       version: dto.version,
       tags: this.normalizeTags(dto.tags),
@@ -155,6 +170,9 @@ export class ProductsService {
         shortDescription: dto.shortDescription?.trim(),
         description: dto.description,
         ...(dto.priceCents === undefined ? {} : await this.pricing(dto.priceCents)),
+        ...(dto.extendedPriceCents === undefined
+          ? {}
+          : await this.extendedPricing(dto.extendedPriceCents)),
         demoUrl: dto.demoUrl,
         version: dto.version,
         tags: dto.tags ? this.normalizeTags(dto.tags) : undefined,
@@ -459,7 +477,15 @@ export class ProductsService {
     });
     if (!product) throw new NotFoundException('Product not found');
 
-    const { thumbnailKey, previewImageKeys, vendor, ...rest } = product;
+    // Sellers' own prices stay private; buyers only see listed prices (fee included).
+    const {
+      thumbnailKey,
+      previewImageKeys,
+      vendor,
+      basePriceCents: _base,
+      extendedBasePriceCents: _extendedBase,
+      ...rest
+    } = product;
     return {
       ...rest,
       thumbnailUrl: await this.storage.createMediaUrl(thumbnailKey),

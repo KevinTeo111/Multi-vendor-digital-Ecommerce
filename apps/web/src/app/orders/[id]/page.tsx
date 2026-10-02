@@ -75,6 +75,8 @@ function OrderView() {
                 </Link>
                 <div className="text-xs text-slate-500">
                   {t('product.by')} {item.vendor.storeName}
+                  {' · '}
+                  {item.licenseType === 'EXTENDED' ? t('licence.extended') : t('licence.regular')}
                   {item.product.version ? ` · v${item.product.version}` : ''}
                 </div>
               </div>
@@ -85,6 +87,12 @@ function OrderView() {
         </ul>
         <div className="mt-4 flex justify-end border-t border-slate-200 pt-3 text-sm">
           <span>
+            {o.discountCents > 0 && o.couponCode && (
+              <span className="mr-4 text-emerald-700">
+                {t('coupon.orderDiscount', { code: o.couponCode })} −{' '}
+                {formatMoney(o.discountCents, o.currency)}
+              </span>
+            )}
             {t('orders.total')} <strong>{formatMoney(o.totalCents, o.currency)}</strong>
           </span>
         </div>

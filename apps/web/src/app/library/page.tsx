@@ -1,10 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import { useState } from 'react';
 import { DownloadButton } from '@/components/download-button';
 import { PageContainer } from '@/components/page-container';
 import { RequireRole } from '@/components/require-role';
-import { Card, EmptyState, LinkButton, Loading, PageHeader } from '@/components/ui';
+import { ReviewForm } from '@/components/review-form';
+import { Badge, Card, EmptyState, LinkButton, Loading, PageHeader } from '@/components/ui';
 import { useT } from '@/i18n/client';
 import { formatBytes, formatDate } from '@/lib/format';
 import { useRealtimeEvent } from '@/lib/realtime';
@@ -31,7 +33,7 @@ function Library() {
           }
         />
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {items.data.map((item) => (
             <Card key={item.id}>
               <div className="flex gap-4">
@@ -56,6 +58,14 @@ function Library() {
                     {item.vendor.storeName} ·{' '}
                     {t('library.purchased', { date: formatDate(item.order?.paidAt) })}
                   </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+                    <Badge status="ACTIVE">
+                      {item.licenseType === 'EXTENDED'
+                        ? t('licence.extended')
+                        : t('licence.regular')}
+                    </Badge>
+                    {item.purchaseCode && <PurchaseCode code={item.purchaseCode} />}
+                  </div>
                 </div>
               </div>
               <ul className="mt-3 space-y-2">
@@ -69,11 +79,34 @@ function Library() {
                   </li>
                 ))}
               </ul>
+              <ReviewForm item={item} onSaved={() => items.reload()} />
             </Card>
           ))}
         </div>
       )}
     </div>
+  );
+}
+
+/** The purchase code with a copy button; sellers verify it before giving support. */
+function PurchaseCode({ code }: { code: string }) {
+  const t = useT();
+  const [copied, setCopied] = useState(false);
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1 text-slate-500">
+      {t('licence.purchaseCode')}:<span className="font-mono text-slate-700">{code}</span>
+      <button
+        onClick={() =>
+          navigator.clipboard
+            .writeText(code)
+            .then(() => setCopied(true))
+            .catch(() => undefined)
+        }
+        className="rounded px-1.5 py-1 font-semibold text-brand-600 hover:bg-brand-50"
+      >
+        {copied ? t('licence.copied') : t('licence.copy')}
+      </button>
+    </span>
   );
 }
 

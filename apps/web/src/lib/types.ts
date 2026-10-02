@@ -1,4 +1,6 @@
 export type Role = 'BUYER' | 'VENDOR' | 'ADMIN';
+export type LicenseType = 'REGULAR' | 'EXTENDED';
+export type CouponType = 'PERCENT' | 'FIXED';
 
 export interface AuthUser {
   id: string;
@@ -61,6 +63,11 @@ export interface ProductCard {
   salesCount: number;
   publishedAt: string | null;
   tags: string[];
+  /** Listed price of the optional Extended licence (fee included). */
+  extendedPriceCents: number | null;
+  /** Visible reviews: average = ratingSum / ratingCount. */
+  ratingSum: number;
+  ratingCount: number;
   category: { id: string; name: string; slug: string };
   vendor: { id: string; storeName: string; slug: string };
 }
@@ -92,6 +99,8 @@ export interface VendorProduct {
   priceCents: number;
   /** The seller's own price; priceCents is what buyers pay (fee included). */
   basePriceCents: number | null;
+  extendedBasePriceCents: number | null;
+  extendedPriceCents: number | null;
   currency: string;
   status: ProductStatus;
   rejectionReason: string | null;
@@ -166,11 +175,15 @@ export interface PayoutDetails {
 export interface CartItem {
   id: string;
   productId: string;
+  licenseType: LicenseType;
+  /** Price of the chosen licence. */
+  unitPriceCents: number;
   product: {
     id: string;
     title: string;
     slug: string;
     priceCents: number;
+    extendedPriceCents: number | null;
     currency: string;
     thumbnailUrl: string | null;
     vendor: { id: string; storeName: string; slug: string };
@@ -193,6 +206,10 @@ export interface OrderItem {
   commissionCents: number;
   vendorNetCents: number;
   gatewayFeeCents: number;
+  discountCents: number;
+  licenseType: LicenseType;
+  purchaseCode: string | null;
+  review?: Pick<Review, 'id' | 'rating' | 'comment' | 'sellerReply' | 'hidden'> | null;
   product: {
     id: string;
     slug: string;
@@ -217,6 +234,8 @@ export interface Order {
   orderNumber: string;
   status: OrderStatus;
   subtotalCents: number;
+  discountCents: number;
+  couponCode: string | null;
   totalCents: number;
   currency: string;
   paymentMethod: string | null;
@@ -237,6 +256,9 @@ export interface VendorSale {
   commissionCents: number;
   vendorNetCents: number;
   gatewayFeeCents: number;
+  discountCents: number;
+  licenseType: LicenseType;
+  purchaseCode: string | null;
   createdAt: string;
   downloads: number;
   order: {
@@ -351,4 +373,51 @@ export interface FinanceSummary {
   vendorPendingCents: number;
   vendorAvailableCents: number;
   withdrawals: { status: WithdrawalStatus; count: number; amountCents: number }[];
+}
+
+export interface Review {
+  id: string;
+  rating: number;
+  comment: string | null;
+  sellerReply: string | null;
+  sellerRepliedAt: string | null;
+  hidden: boolean;
+  createdAt: string;
+  buyer: { name: string; email?: string };
+  product?: { id: string; title: string; slug: string; vendor?: { storeName: string } };
+}
+
+export interface Coupon {
+  id: string;
+  code: string;
+  type: CouponType;
+  value: number;
+  minOrderCents: number | null;
+  maxRedemptions: number | null;
+  perBuyerLimit: number;
+  startsAt: string | null;
+  endsAt: string | null;
+  active: boolean;
+  createdAt: string;
+  product: { id: string; title: string } | null;
+  vendor: { id: string; storeName: string } | null;
+  _count: { redemptions: number };
+}
+
+export interface CheckoutPreview {
+  subtotalCents: number;
+  discountCents: number;
+  totalCents: number;
+  couponCode: string | null;
+}
+
+export interface PurchaseVerification {
+  valid: boolean;
+  purchaseCode: string;
+  productTitle: string;
+  licenseType: LicenseType;
+  orderNumber: string;
+  buyerName: string;
+  paidAt: string | null;
+  refundedAt: string | null;
 }

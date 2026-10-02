@@ -2,8 +2,10 @@ import { BadRequestException, Inject, Injectable, Logger, NotFoundException } fr
 import {
   LedgerEntryStatus,
   LedgerEntryType,
+  LicenseType,
   OrderStatus,
   PaymentMethod,
+  Prisma,
   ProductStatus,
   VendorStatus,
 } from '@prisma/client';
@@ -13,11 +15,15 @@ import { primaryWebUrl } from '../../config/env';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CartService } from '../cart/cart.service';
+import { withoutCoupon } from '../coupons/coupon-math';
+import { CouponsService } from '../coupons/coupons.service';
 import { PAYMENT_GATEWAY, PaymentGateway } from '../payments/gateway/payment-gateway.interface';
 import { RealtimeService } from '../realtime/realtime.service';
 import { SettingsService } from '../settings/settings.service';
+import { removeReviewsForOrderItems } from '../reviews/rating';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { OrdersService } from './orders.service';
+import { generatePurchaseCode } from './purchase-code';
 import { decideReconciliation } from './reconciliation';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -42,6 +48,7 @@ export class CheckoutService {
     private readonly orders: OrdersService,
     private readonly audit: AuditService,
     private readonly realtime: RealtimeService,
+    private readonly coupons: CouponsService,
     @Inject(PAYMENT_GATEWAY) private readonly gateway: PaymentGateway,
   ) {}
 
@@ -49,78 +56,41 @@ export class CheckoutService {
    * Turns the cart into a PENDING order, then starts payment. With the mock gateway the order is
    * paid immediately; with a hosted checkout the buyer is redirected and the webhook flips it to PAID.
    */
-  async checkout(buyerId: string) {
+  async checkout(buyerId: string, couponCode?: string) {
     const buyer = await this.prisma.user.findUniqueOrThrow({
       where: { id: buyerId },
       select: { id: true, name: true, email: true },
     });
-    const cart = await this.cart.get(buyerId);
-    if (cart.items.length === 0) throw new BadRequestException('Your cart is empty');
-
-    const [defaultCommissionBps, currency] = await Promise.all([
-      this.settings.get(SETTING_KEYS.DEFAULT_COMMISSION_BPS),
-      this.settings.get(SETTING_KEYS.SITE_CURRENCY),
-    ]);
+    const currency = await this.settings.get(SETTING_KEYS.SITE_CURRENCY);
 
     const order = await this.prisma.$transaction(async (tx) => {
-      const products = await tx.product.findMany({
-        where: {
-          id: { in: cart.items.map((i) => i.product.id) },
-          status: ProductStatus.APPROVED,
-          vendor: { status: VendorStatus.ACTIVE },
-        },
-        select: { id: true, title: true, priceCents: true, basePriceCents: true, vendorId: true },
-      });
-      if (products.length !== cart.items.length)
-        throw new BadRequestException(
-          'Some items are no longer available; please review your cart',
-        );
-
-      // Commission rate comes from each vendor's plan at this moment and is frozen on the item.
-      const rateByVendor = new Map<string, { rateBps: number; planId: string | null }>();
-      for (const vendorId of new Set(products.map((p) => p.vendorId))) {
-        const sub = await this.subscriptions.getEntitling(vendorId, tx);
-        rateByVendor.set(vendorId, {
-          rateBps: sub?.plan.commissionRateBps ?? defaultCommissionBps,
-          planId: sub?.planId ?? null,
-        });
-      }
-
-      const items = products.map((p) => {
-        const { rateBps, planId } = rateByVendor.get(p.vendorId)!;
-        // The buyer pays the listed price; the fee reserve covers the provider, the commission is
-        // taken from the seller's own price, and the seller keeps the rest.
-        const { gatewayFeeCents, commissionCents, vendorNetCents } = splitSaleWithFee(
-          p.priceCents,
-          p.basePriceCents ?? p.priceCents,
-          rateBps,
-        );
-        return {
-          productId: p.id,
-          vendorId: p.vendorId,
-          planId,
-          productTitle: p.title,
-          priceCents: p.priceCents,
-          commissionRateBps: rateBps,
-          commissionCents,
-          vendorNetCents,
-          gatewayFeeCents,
-        };
-      });
-      const subtotalCents = items.reduce((s, i) => s + i.priceCents, 0);
-
-      return tx.order.create({
+      const priced = await this.price(buyerId, couponCode, tx, true);
+      const order = await tx.order.create({
         data: {
           orderNumber: generateOrderNumber(),
           buyerId,
           status: OrderStatus.PENDING,
-          subtotalCents,
-          totalCents: subtotalCents,
+          subtotalCents: priced.subtotalCents,
+          discountCents: priced.discountCents,
+          totalCents: priced.totalCents,
+          couponCode: priced.coupon?.code ?? null,
           currency,
-          items: { create: items },
+          items: {
+            create: priced.lines.map((line) => ({ ...line, purchaseCode: generatePurchaseCode() })),
+          },
         },
         include: { items: true },
       });
+      if (priced.coupon)
+        await tx.couponRedemption.create({
+          data: {
+            couponId: priced.coupon.id,
+            orderId: order.id,
+            buyerId,
+            discountCents: priced.discountCents,
+          },
+        });
+      return order;
     });
 
     let checkout;
@@ -132,8 +102,11 @@ export class CheckoutService {
         currency: order.currency,
         customer: buyer,
         items: order.items.map((i) => ({
-          description: i.productTitle,
-          amountCents: i.priceCents,
+          description:
+            i.licenseType === LicenseType.EXTENDED
+              ? `${i.productTitle} (Extended licence)`
+              : i.productTitle,
+          amountCents: i.priceCents - i.discountCents,
           quantity: 1,
         })),
         successUrl: `${primaryWebUrl}/orders/${order.id}?status=success`,
@@ -159,6 +132,114 @@ export class CheckoutService {
     return {
       order: await this.orders.getForBuyer(buyerId, order.id),
       checkoutUrl: checkout.checkoutUrl ?? null,
+    };
+  }
+
+  /** What the buyer would pay right now, with an optional coupon. Nothing is written. */
+  async preview(buyerId: string, couponCode?: string) {
+    const priced = await this.price(buyerId, couponCode, this.prisma, false);
+    return {
+      subtotalCents: priced.subtotalCents,
+      discountCents: priced.discountCents,
+      totalCents: priced.totalCents,
+      couponCode: priced.coupon?.code ?? null,
+      items: priced.lines.map((l) => ({
+        productId: l.productId,
+        licenseType: l.licenseType,
+        priceCents: l.priceCents,
+        discountCents: l.discountCents,
+      })),
+    };
+  }
+
+  /**
+   * Prices the cart: listed price per chosen licence, the fee / commission / seller split frozen
+   * per line, then the coupon (validated, and locked when called from checkout).
+   */
+  private async price(
+    buyerId: string,
+    couponCode: string | undefined,
+    tx: Prisma.TransactionClient,
+    lock: boolean,
+  ) {
+    const cart = await this.cart.get(buyerId);
+    if (cart.items.length === 0) throw new BadRequestException('Your cart is empty');
+    const defaultCommissionBps = await this.settings.get(SETTING_KEYS.DEFAULT_COMMISSION_BPS);
+    const licenseOf = new Map(cart.items.map((i) => [i.product.id, i.licenseType]));
+
+    const products = await tx.product.findMany({
+      where: {
+        id: { in: cart.items.map((i) => i.product.id) },
+        status: ProductStatus.APPROVED,
+        vendor: { status: VendorStatus.ACTIVE },
+      },
+      select: {
+        id: true,
+        title: true,
+        priceCents: true,
+        basePriceCents: true,
+        extendedPriceCents: true,
+        extendedBasePriceCents: true,
+        vendorId: true,
+      },
+    });
+    if (products.length !== cart.items.length)
+      throw new BadRequestException('Some items are no longer available; please review your cart');
+
+    // Commission rate comes from each vendor's plan at this moment and is frozen on the item.
+    const rateByVendor = new Map<string, { rateBps: number; planId: string | null }>();
+    for (const vendorId of new Set(products.map((p) => p.vendorId))) {
+      const sub = await this.subscriptions.getEntitling(vendorId, tx);
+      rateByVendor.set(vendorId, {
+        rateBps: sub?.plan.commissionRateBps ?? defaultCommissionBps,
+        planId: sub?.planId ?? null,
+      });
+    }
+
+    const lines = products.map((p) => {
+      const { rateBps, planId } = rateByVendor.get(p.vendorId)!;
+      const licenseType = licenseOf.get(p.id) ?? LicenseType.REGULAR;
+      const extended = licenseType === LicenseType.EXTENDED;
+      if (extended && p.extendedPriceCents === null)
+        throw new BadRequestException(
+          `The extended licence of "${p.title}" is no longer offered; please review your cart`,
+        );
+      const priceCents = extended ? p.extendedPriceCents! : p.priceCents;
+      const baseCents = extended
+        ? (p.extendedBasePriceCents ?? priceCents)
+        : (p.basePriceCents ?? p.priceCents);
+      // The buyer pays the listed price; the fee reserve covers the provider, the commission is
+      // taken from the seller's own price, and the seller keeps the rest.
+      const split = splitSaleWithFee(priceCents, baseCents, rateBps);
+      return {
+        productId: p.id,
+        vendorId: p.vendorId,
+        planId,
+        productTitle: p.title,
+        licenseType,
+        priceCents,
+        commissionRateBps: rateBps,
+        ...split,
+      };
+    });
+
+    const subtotalCents = lines.reduce((s, l) => s + l.priceCents, 0);
+    if (!couponCode?.trim()) {
+      return {
+        lines: withoutCoupon(lines),
+        subtotalCents,
+        discountCents: 0,
+        totalCents: subtotalCents,
+        coupon: null,
+      };
+    }
+    const quote = await this.coupons.quote(couponCode, buyerId, lines, tx, lock);
+    return {
+      lines: quote.outcome.lines,
+      subtotalCents,
+      discountCents: quote.outcome.discountCents,
+      totalCents: subtotalCents - quote.outcome.discountCents,
+      coupon: { id: quote.couponId, code: quote.code },
     };
   }
 
@@ -351,6 +432,10 @@ export class CheckoutService {
         where: { id: orderId },
         include: { items: true },
       });
+      await removeReviewsForOrderItems(
+        tx,
+        order.items.map((i) => i.id),
+      );
       for (const item of order.items) {
         // Reverse the credit where it sits: a credit still on hold is reversed on hold with the
         // same release date (both mature together and net to zero), so a refund never pushes the

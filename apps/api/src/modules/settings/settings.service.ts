@@ -89,7 +89,8 @@ export class SettingsService {
     return this.prisma.$executeRaw`
       UPDATE "Product"
       SET "basePriceCents" = COALESCE("basePriceCents", "priceCents"),
-          "priceCents" = (COALESCE("basePriceCents", "priceCents") * ${BPS_DENOMINATOR} + ${keep} - 1) / ${keep}`;
+          "priceCents" = (COALESCE("basePriceCents", "priceCents") * ${BPS_DENOMINATOR} + ${keep} - 1) / ${keep},
+          "extendedPriceCents" = ("extendedBasePriceCents" * ${BPS_DENOMINATOR} + ${keep} - 1) / ${keep}`;
   }
 
   private isKnownKey(key: string): key is SettingKey {

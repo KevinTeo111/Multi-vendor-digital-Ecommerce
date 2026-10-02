@@ -13,6 +13,7 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateIf,
 } from 'class-validator';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 
@@ -39,6 +40,13 @@ export class CreateProductDto {
   @Min(0)
   @Max(100_000_000)
   priceCents: number;
+
+  /** Seller's price for the optional Extended licence. */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(100_000_000)
+  extendedPriceCents?: number;
 
   @IsOptional()
   @IsUrl({ require_tld: false })
@@ -85,6 +93,14 @@ export class UpdateProductDto {
   @Min(0)
   @Max(100_000_000)
   priceCents?: number;
+
+  /** Seller's price for the Extended licence; null removes the Extended licence. */
+  @IsOptional()
+  @ValidateIf((_, v) => v !== null)
+  @IsInt()
+  @Min(1)
+  @Max(100_000_000)
+  extendedPriceCents?: number | null;
 
   @IsOptional()
   @IsUrl({ require_tld: false })

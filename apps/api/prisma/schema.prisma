@@ -63,6 +63,16 @@ enum OrderStatus {
   REFUNDED
 }
 
+enum LicenseType {
+  REGULAR
+  EXTENDED
+}
+
+enum CouponType {
+  PERCENT // value in basis points (1000 = 10%)
+  FIXED // value in cents
+}
+
 enum PaymentMethod {
   CREDIT_CARD
   PIX
@@ -110,9 +120,11 @@ model User {
   orders              Order[]
   downloads           Download[]
   refreshTokens       RefreshToken[]
-  auditLogs           AuditLog[]     @relation("AuditActor")
-  reviewedProducts    Product[]      @relation("ProductReviewer")
-  reviewedWithdrawals Withdrawal[]   @relation("WithdrawalReviewer")
+  reviews             Review[]
+  couponRedemptions   CouponRedemption[]
+  auditLogs           AuditLog[]         @relation("AuditActor")
+  reviewedProducts    Product[]          @relation("ProductReviewer")
+  reviewedWithdrawals Withdrawal[]       @relation("WithdrawalReviewer")
 
   @@index([role, status])
 }
@@ -153,6 +165,8 @@ model Vendor {
   orderItems    OrderItem[]
   ledgerEntries LedgerEntry[]
   withdrawals   Withdrawal[]
+  ownCoupons    Coupon[]       @relation("CouponOwner")
+  scopedCoupons Coupon[]       @relation("CouponScope")
 
   @@index([status])
 }
@@ -217,32 +231,38 @@ model Category {
 }
 
 model Product {
-  id               String        @id @default(cuid())
-  vendorId         String
-  categoryId       String
-  title            String
-  slug             String        @unique
-  shortDescription String
-  description      String
+  id                     String        @id @default(cuid())
+  vendorId               String
+  categoryId             String
+  title                  String
+  slug                   String        @unique
+  shortDescription       String
+  description            String
   /// Listed price the buyer pays: seller price + provider fee (see listPriceCents).
-  priceCents       Int
+  priceCents             Int
   /// The seller's own price. Null only for rows written before fee-inclusive pricing.
-  basePriceCents   Int?
-  currency         String        @default("BRL")
-  status           ProductStatus @default(DRAFT)
-  rejectionReason  String?
-  thumbnailKey     String?
-  previewImageKeys String[]      @default([])
-  demoUrl          String?
-  version          String?
-  tags             String[]      @default([])
-  salesCount       Int           @default(0)
-  submittedAt      DateTime?
-  reviewedAt       DateTime?
-  reviewedById     String?
-  publishedAt      DateTime?
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  basePriceCents         Int?
+  /// Optional Extended licence: the seller's price and the listed price (fee built in).
+  extendedBasePriceCents Int?
+  extendedPriceCents     Int?
+  /// Visible reviews only; average = ratingSum / ratingCount.
+  ratingSum              Int           @default(0)
+  ratingCount            Int           @default(0)
+  currency               String        @default("BRL")
+  status                 ProductStatus @default(DRAFT)
+  rejectionReason        String?
+  thumbnailKey           String?
+  previewImageKeys       String[]      @default([])
+  demoUrl                String?
+  version                String?
+  tags                   String[]      @default([])
+  salesCount             Int           @default(0)
+  submittedAt            DateTime?
+  reviewedAt             DateTime?
+  reviewedById           String?
+  publishedAt            DateTime?
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
 
   vendor     Vendor        @relation(fields: [vendorId], references: [id], onDelete: Cascade)
   category   Category      @relation(fields: [categoryId], references: [id])
@@ -250,6 +270,8 @@ model Product {
   files      ProductFile[]
   cartItems  CartItem[]
   orderItems OrderItem[]
+  reviews    Review[]
+  coupons    Coupon[]
 
   @@index([vendorId, status])
   @@index([status, publishedAt])
@@ -286,10 +308,11 @@ model Cart {
 }
 
 model CartItem {
-  id        String   @id @default(cuid())
-  cartId    String
-  productId String
-  createdAt DateTime @default(now())
+  id          String      @id @default(cuid())
+  cartId      String
+  productId   String
+  licenseType LicenseType @default(REGULAR)
+  createdAt   DateTime    @default(now())
 
   cart    Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
@@ -312,18 +335,21 @@ model Order {
   paidAt          DateTime?
   refundedAt      DateTime?
   refundReason    String? // "Chargeback: …" for card disputes
+  discountCents   Int            @default(0) // totalCents = subtotalCents - discountCents
+  couponCode      String?
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
-  buyer User        @relation(fields: [buyerId], references: [id])
-  items OrderItem[]
+  buyer      User              @relation(fields: [buyerId], references: [id])
+  items      OrderItem[]
+  redemption CouponRedemption?
 
   @@index([buyerId, status])
   @@index([status, createdAt])
 }
 
 model OrderItem {
-  id                String   @id @default(cuid())
+  id                String      @id @default(cuid())
   orderId           String
   productId         String
   vendorId          String
@@ -333,8 +359,13 @@ model OrderItem {
   commissionRateBps Int // snapshot of plan commission at time of sale
   commissionCents   Int
   vendorNetCents    Int
-  gatewayFeeCents   Int      @default(0) // provider fee reserve: priceCents = fee + commission + net
-  createdAt         DateTime @default(now())
+  gatewayFeeCents   Int         @default(0) // provider fee reserve
+  /// Coupon discount on this line. Paid = priceCents - discountCents = fee + commission + net.
+  discountCents     Int         @default(0)
+  licenseType       LicenseType @default(REGULAR)
+  /// Unique code proving the purchase; valid only while the order is PAID.
+  purchaseCode      String?     @unique
+  createdAt         DateTime    @default(now())
 
   order         Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product       Product       @relation(fields: [productId], references: [id])
@@ -342,6 +373,7 @@ model OrderItem {
   plan          Plan?         @relation(fields: [planId], references: [id])
   downloads     Download[]
   ledgerEntries LedgerEntry[]
+  review        Review?
 
   @@unique([orderId, productId])
   @@index([vendorId, createdAt])
@@ -445,4 +477,72 @@ model AuditLog {
 
   @@index([entityType, entityId])
   @@index([actorId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Reviews and coupons
+// ---------------------------------------------------------------------------
+
+/// One review per purchased item; only paid, not refunded purchases can be reviewed.
+model Review {
+  id              String    @id @default(cuid())
+  orderItemId     String    @unique
+  productId       String
+  buyerId         String
+  rating          Int // 1..5
+  comment         String?
+  sellerReply     String?
+  sellerRepliedAt DateTime?
+  hidden          Boolean   @default(false) // hidden by an admin; excluded from ratings
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  orderItem OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  buyer     User      @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+
+  @@index([productId, hidden, createdAt])
+}
+
+/// Admin coupons (ownerVendorId null) are funded by the platform; seller coupons by the seller.
+model Coupon {
+  id             String     @id @default(cuid())
+  code           String     @unique // stored upper-case
+  ownerVendorId  String?
+  vendorId       String? // scope: only this seller's products
+  productId      String? // scope: only this product
+  type           CouponType
+  value          Int
+  minOrderCents  Int?
+  maxRedemptions Int?
+  perBuyerLimit  Int        @default(1)
+  startsAt       DateTime?
+  endsAt         DateTime?
+  active         Boolean    @default(true)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  owner       Vendor?            @relation("CouponOwner", fields: [ownerVendorId], references: [id], onDelete: Cascade)
+  vendor      Vendor?            @relation("CouponScope", fields: [vendorId], references: [id], onDelete: Cascade)
+  product     Product?           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  redemptions CouponRedemption[]
+
+  @@index([ownerVendorId])
+}
+
+/// A coupon use. Counts against limits while its order is PENDING or PAID.
+model CouponRedemption {
+  id            String   @id @default(cuid())
+  couponId      String
+  orderId       String   @unique
+  buyerId       String
+  discountCents Int
+  createdAt     DateTime @default(now())
+
+  coupon Coupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  order  Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  buyer  User   @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+
+  @@index([couponId])
+  @@index([couponId, buyerId])
 }

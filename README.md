@@ -138,16 +138,34 @@ the command resets the demo accounts.
   password reset and change 5/min. Payment webhooks and `/api/health` are never limited.
 - Security headers via helmet.
 
+## Reviews, coupons and licences
+
+- **Licences.** Every product has a Regular licence; a seller may add an optional Extended licence
+  with its own base price (the buyer price includes the provider fee, like the Regular one). The cart
+  stores the licence per item and falls back to Regular if the seller withdraws the Extended price.
+- **Purchase codes.** Each order item gets a unique code (`XXXX-XXXX-XXXX-XXXX`) shown in the
+  buyer's library. Sellers check a code under Vendor → Licence check; a refunded sale shows as revoked.
+- **Reviews.** Only a buyer of a paid item can rate it (1–5 stars, optional comment, editable). The
+  seller can reply once per review (editable); the admin can hide and restore reviews. Product
+  rating is kept as a running sum and count of visible reviews. A refund deletes the item's review.
+- **Coupons.** Admin coupons are funded by the platform (taken from commission); seller coupons only
+  apply to that seller's products and are funded from the seller's net (never below zero). A coupon
+  can be limited to one seller or product, a minimum order, a period, a total number of uses and a
+  number of uses per buyer (pending and paid orders both count, so a buyer can't stack unpaid
+  checkouts). The discount is split across eligible items and every order still charges at least
+  R$ 1,00. The cart previews the discount with `POST /checkout/preview` using the same pricing code
+  as `POST /checkout`.
+
 ## API surface (all under `/api`)
 
 | Area | Routes |
 | --- | --- |
 | Auth | `POST /auth/register`, `/auth/login`, `/auth/refresh`, `/auth/logout`, `GET /auth/me` |
-| Public catalog | `GET /products`, `/products/:slug`, `/categories`, `/plans`, `/vendors/:slug`, `/settings/public` |
-| Buyer | `GET/POST/DELETE /cart…`, `POST /checkout`, `GET /orders`, `/orders/:id`, `/orders/library`, `/orders/items/:id/download` |
-| Vendor | `/vendors/me`, `/vendor/products…` (CRUD, files, images, submit, unpublish), `/vendor/subscription`, `/vendor/sales`, `/vendor/sales/:itemId`, `/vendor/finance/{balance,ledger,withdrawals,withdrawals/eligibility}` |
+| Public catalog | `GET /products`, `/products/:slug`, `/products/:slug/reviews`, `/categories`, `/plans`, `/vendors/:slug`, `/settings/public` |
+| Buyer | `GET/POST/DELETE /cart…`, `POST /reviews`, `POST /checkout`, `/checkout/preview`, `GET /orders`, `/orders/:id`, `/orders/library`, `/orders/items/:id/download` |
+| Vendor | `/vendors/me`, `/vendor/products…` (CRUD, files, images, submit, unpublish), `/vendor/subscription`, `/vendor/sales`, `/vendor/sales/:itemId`, `/vendor/sales/verify?code=`, `/vendor/{reviews,coupons}…`, `/vendor/finance/{balance,ledger,withdrawals,withdrawals/eligibility}` |
 | Realtime | Socket.IO namespace `/realtime` (token in handshake `auth.token`) |
-| Admin | `/admin/{users,vendors,products,orders,plans,categories,subscriptions,settings}`, `/admin/finance/{summary,withdrawals,vendors/:id/ledger}` |
+| Admin | `/admin/{users,vendors,products,orders,plans,categories,subscriptions,settings,reviews,coupons}`, `/admin/finance/{summary,withdrawals,vendors/:id/ledger}` |
 | Webhooks | `POST /webhooks/payments` |
 
 ## Database notes
@@ -311,6 +329,6 @@ Nothing Stripe-related is exposed to the browser.
 
 - Email notifications (product approved/rejected, order paid, withdrawal status).
 - Background jobs on Redis/BullMQ (ledger release, subscription expiry, webhook replay).
-- Reviews and ratings, licenses (regular/extended), refunds, coupons, multi-currency.
+- Multi-currency.
 - Server-side rendering of authenticated pages with cookie sessions (currently JWT in the browser).
 - Public CDN bucket for thumbnails instead of signed media URLs.

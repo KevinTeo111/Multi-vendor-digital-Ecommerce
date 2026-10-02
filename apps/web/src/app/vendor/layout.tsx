@@ -11,6 +11,9 @@ export default function VendorLayout({ children }: { children: React.ReactNode }
     { href: '/vendor/products', label: t('dashboard.navProducts'), icon: 'box' },
     { href: '/vendor/sales', label: t('dashboard.navOrders'), icon: 'receipt' },
     { href: '/vendor/finance', label: t('dashboard.navEarnings'), icon: 'wallet' },
+    { href: '/vendor/reviews', label: t('dashboard.navReviews'), icon: 'star' },
+    { href: '/vendor/coupons', label: t('dashboard.navCoupons'), icon: 'tag' },
+    { href: '/vendor/licenses', label: t('dashboard.navLicenses'), icon: 'shield' },
     { href: '/vendor/subscription', label: t('dashboard.navPlan'), icon: 'card' },
     { href: '/vendor/settings', label: t('dashboard.navStoreSettings'), icon: 'settings' },
   ];

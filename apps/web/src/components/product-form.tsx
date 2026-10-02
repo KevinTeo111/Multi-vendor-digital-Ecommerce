@@ -14,6 +14,7 @@ export interface ProductFormValues {
   shortDescription: string;
   description: string;
   priceCents: number;
+  extendedPriceCents?: number | null;
   demoUrl?: string;
   version?: string;
   tags?: string[];
@@ -44,6 +45,8 @@ export function ProductForm({
     description: initial?.description ?? '',
     // Sellers edit their own price; the listed price is derived from it.
     price: initial ? (initial.basePriceCents ?? initial.priceCents ?? 0) / 100 : 0,
+    extendedPrice:
+      initial?.extendedBasePriceCents != null ? String(initial.extendedBasePriceCents / 100) : '',
     demoUrl: initial?.demoUrl ?? '',
     version: initial?.version ?? '',
     tags: (initial?.tags ?? []).join(', '),
@@ -62,6 +65,12 @@ export function ProductForm({
       shortDescription: form.shortDescription,
       description: form.description,
       priceCents: Math.round(Number(form.price) * 100),
+      // Empty removes the Extended licence (an existing product sends null to clear it).
+      extendedPriceCents: form.extendedPrice
+        ? Math.round(Number(form.extendedPrice) * 100)
+        : initial
+          ? null
+          : undefined,
       demoUrl: form.demoUrl || undefined,
       version: form.version || undefined,
       tags: form.tags
@@ -75,6 +84,7 @@ export function ProductForm({
   const feeBps = settings.data?.gatewayFeeBps ?? 0;
   const commissionBps = me.data?.subscription?.plan.commissionRateBps;
   const buyerPaysCents = listPriceCents(baseCents, feeBps);
+  const extendedBaseCents = Math.max(0, Math.round(Number(form.extendedPrice) * 100) || 0);
 
   return (
     <form onSubmit={submit} className="space-y-4">
@@ -103,6 +113,22 @@ export function ProductForm({
           />
         </Field>
       </div>
+      <Field label={t('licence.formExtendedPrice')} hint={t('licence.formExtendedPriceHint')}>
+        <Input
+          type="number"
+          min={0.01}
+          step="0.01"
+          value={form.extendedPrice}
+          onChange={set('extendedPrice')}
+        />
+      </Field>
+      {extendedBaseCents > 0 && settings.data && (
+        <p className="-mt-2 text-sm text-slate-600">
+          {t('licence.pricingExtendedBuyerPays', {
+            amount: formatMoney(listPriceCents(extendedBaseCents, feeBps)),
+          })}
+        </p>
+      )}
       {baseCents > 0 && settings.data && (
         <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">
           <div>

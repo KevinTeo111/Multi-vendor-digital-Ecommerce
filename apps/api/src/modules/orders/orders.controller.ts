@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, Post, Query, Req } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Post, Query, Req } from '@nestjs/common';
+import { CouponCodeDto } from '../coupons/dto/coupon.dto';
 import { Role } from '@prisma/client';
 import type { Request } from 'express';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -9,6 +10,7 @@ import {
   BuyerOrdersQuery,
   RefundOrderDto,
   VendorSalesQuery,
+  VerifyPurchaseQuery,
 } from './dto/order.dto';
 import { OrdersService } from './orders.service';
 
@@ -20,8 +22,15 @@ export class OrdersController {
   ) {}
 
   @Post('checkout')
-  checkout(@CurrentUser('id') userId: string) {
-    return this.checkoutService.checkout(userId);
+  checkout(@CurrentUser('id') userId: string, @Body() dto: CouponCodeDto) {
+    return this.checkoutService.checkout(userId, dto.couponCode);
+  }
+
+  /** What the buyer would pay now (with an optional coupon); nothing is created. */
+  @Post('checkout/preview')
+  @HttpCode(200)
+  preview(@CurrentUser('id') userId: string, @Body() dto: CouponCodeDto) {
+    return this.checkoutService.preview(userId, dto.couponCode);
   }
 
   @Get('orders')
@@ -74,6 +83,12 @@ export class VendorSalesController {
   @Get()
   list(@CurrentUser('vendorId') vendorId: string, @Query() query: VendorSalesQuery) {
     return this.orders.listSalesForVendor(vendorId, query);
+  }
+
+  /** Checks a buyer's purchase code against this seller's sales. Declared before ':itemId'. */
+  @Get('verify')
+  verify(@CurrentUser('vendorId') vendorId: string, @Query() query: VerifyPurchaseQuery) {
+    return this.orders.verifyPurchaseCode(vendorId, query.code);
   }
 
   @Get(':itemId')

@@ -72,6 +72,14 @@ export default function VendorSaleDetailPage() {
                   {s.order.paymentMethod ?? t('common.notAvailable')}
                 </Row>
                 <Row label={t('vendor.downloads')}>{s.downloads}</Row>
+                <Row label={t('licence.label')}>
+                  {s.licenseType === 'EXTENDED' ? t('licence.extended') : t('licence.regular')}
+                </Row>
+                {s.purchaseCode && (
+                  <Row label={t('licence.purchaseCode')}>
+                    <span className="font-mono text-xs">{s.purchaseCode}</span>
+                  </Row>
+                )}
               </dl>
             </div>
           </div>
@@ -88,6 +96,11 @@ export default function VendorSaleDetailPage() {
                   − {formatMoney(s.gatewayFeeCents, s.order.currency)}
                 </Row>
               </>
+            )}
+            {s.discountCents > 0 && (
+              <Row label={t('coupon.title')}>
+                − {formatMoney(s.discountCents, s.order.currency)}
+              </Row>
             )}
             <Row label={t('vendor.yourPrice')}>
               <span className="font-semibold">

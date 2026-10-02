@@ -22,6 +22,8 @@ import { OrdersModule } from './modules/orders/orders.module';
 import { FinanceModule } from './modules/finance/finance.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { JobsModule } from './modules/jobs/jobs.module';
+import { CouponsModule } from './modules/coupons/coupons.module';
+import { ReviewsModule } from './modules/reviews/reviews.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
 import { MailModule } from './modules/mail/mail.module';
 import { HealthController } from './health.controller';
@@ -53,6 +55,8 @@ import { HealthController } from './health.controller';
     FinanceModule,
     WebhooksModule,
     JobsModule,
+    CouponsModule,
+    ReviewsModule,
   ],
   controllers: [HealthController],
   providers: [

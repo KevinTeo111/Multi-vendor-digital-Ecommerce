@@ -265,6 +265,8 @@ export const NAV_ICONS = {
   store: StoreIcon,
   check: BadgeCheckIcon,
   download: DownloadIcon,
+  star: StarIcon,
+  shield: ShieldIcon,
 } as const;
 
 export type NavIconName = keyof typeof NAV_ICONS;

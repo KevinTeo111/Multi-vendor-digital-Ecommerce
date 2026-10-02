@@ -21,3 +21,10 @@ export class RefundOrderDto {
   @MaxLength(500)
   reason: string;
 }
+
+export class VerifyPurchaseQuery {
+  @IsString()
+  @MinLength(8)
+  @MaxLength(40)
+  code: string;
+}

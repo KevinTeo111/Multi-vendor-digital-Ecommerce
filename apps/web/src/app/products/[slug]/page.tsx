@@ -4,6 +4,8 @@ export const maxDuration = 60;
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AddToCart } from '@/components/add-to-cart';
+import { ProductReviews } from '@/components/product-reviews';
+import { RatingSummary } from '@/components/stars';
 import { DefinitionRow as Row } from '@/components/definition-row';
 import { BadgeCheckIcon, CheckIcon, DownloadIcon, ShieldIcon, StoreIcon } from '@/components/icons';
 import { PageContainer } from '@/components/page-container';
@@ -108,6 +110,12 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                 {product.vendor.storeName}
               </Link>
             </p>
+            <RatingSummary
+              sum={product.ratingSum}
+              count={product.ratingCount}
+              size={16}
+              className="mt-2 text-sm"
+            />
             <p className="mt-3 text-sm text-slate-600">{product.shortDescription}</p>
 
             <div className="mt-5 flex items-baseline gap-3">
@@ -142,7 +150,13 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             </ul>
 
             <div className="mt-6 space-y-2">
-              <AddToCart productId={product.id} title={product.title} />
+              <AddToCart
+                productId={product.id}
+                title={product.title}
+                priceCents={product.priceCents}
+                extendedPriceCents={product.extendedPriceCents}
+                currency={product.currency}
+              />
               {product.demoUrl && (
                 <a
                   href={product.demoUrl}
@@ -218,6 +232,12 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           </div>
         </div>
       </div>
+      <ProductReviews
+        slug={product.slug}
+        storeName={product.vendor.storeName}
+        ratingSum={product.ratingSum}
+        ratingCount={product.ratingCount}
+      />
     </PageContainer>
   );
 }

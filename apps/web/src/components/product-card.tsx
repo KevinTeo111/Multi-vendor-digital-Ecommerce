@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useT } from '@/i18n/client';
 import { formatMoney } from '@/lib/format';
+import { RatingSummary } from './stars';
 import type { ProductCard as ProductCardData } from '@/lib/types';
 import { ArrowRightIcon, DownloadIcon } from './icons';
 
@@ -67,6 +68,7 @@ export function ProductCard({ product }: { product: ProductCardData }) {
             {product.vendor.storeName}
           </Link>
         </p>
+        <RatingSummary sum={product.ratingSum} count={product.ratingCount} className="mt-1" />
         <p className="mt-1 flex items-center gap-1 text-xs text-slate-500">
           <DownloadIcon size={14} className="text-brand-500" />
           {t(product.salesCount === 1 ? 'common.sale' : 'common.sales', {

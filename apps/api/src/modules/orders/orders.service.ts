@@ -1,4 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { normalizePurchaseCode } from './purchase-code';
 import { OrderStatus, Prisma } from '@prisma/client';
 import { env } from '../../config/env';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -58,6 +59,9 @@ export class OrdersService {
       orderBy: { createdAt: 'desc' },
       include: {
         ...orderItemInclude,
+        review: {
+          select: { id: true, rating: true, comment: true, sellerReply: true, hidden: true },
+        },
         order: { select: { id: true, orderNumber: true, paidAt: true } },
         product: {
           select: {
@@ -207,6 +211,43 @@ export class OrdersService {
       ...rest,
       downloads: _count.downloads,
       product: await this.storage.withThumbnail(product),
+    };
+  }
+
+  /**
+   * Lets a seller confirm that a purchase code is genuine and belongs to one of their sales.
+   * A refunded or charged-back purchase is reported as no longer valid.
+   */
+  async verifyPurchaseCode(vendorId: string, code: string) {
+    const item = await this.prisma.orderItem.findFirst({
+      where: { purchaseCode: normalizePurchaseCode(code), vendorId },
+      select: {
+        purchaseCode: true,
+        productTitle: true,
+        licenseType: true,
+        createdAt: true,
+        order: {
+          select: {
+            orderNumber: true,
+            status: true,
+            paidAt: true,
+            refundedAt: true,
+            buyer: { select: { name: true } },
+          },
+        },
+      },
+    });
+    if (!item || !['PAID', 'REFUNDED'].includes(item.order.status))
+      throw new NotFoundException('No purchase with this code was found for your products');
+    return {
+      valid: item.order.status === OrderStatus.PAID,
+      purchaseCode: item.purchaseCode,
+      productTitle: item.productTitle,
+      licenseType: item.licenseType,
+      orderNumber: item.order.orderNumber,
+      buyerName: item.order.buyer.name,
+      paidAt: item.order.paidAt,
+      refundedAt: item.order.refundedAt,
     };
   }
 

@@ -1,11 +1,16 @@
 import { Body, Controller, Delete, Get, Param, Post } from '@nestjs/common';
-import { IsString } from 'class-validator';
+import { LicenseType } from '@prisma/client';
+import { IsEnum, IsOptional, IsString } from 'class-validator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { CartService } from './cart.service';
 
 class AddCartItemDto {
   @IsString()
   productId: string;
+
+  @IsOptional()
+  @IsEnum(LicenseType)
+  licenseType?: LicenseType;
 }
 
 @Controller('cart')
@@ -19,7 +24,7 @@ export class CartController {
 
   @Post('items')
   add(@CurrentUser('id') userId: string, @Body() dto: AddCartItemDto) {
-    return this.cart.addItem(userId, dto.productId);
+    return this.cart.addItem(userId, dto.productId, dto.licenseType);
   }
 
   @Delete('items/:productId')
