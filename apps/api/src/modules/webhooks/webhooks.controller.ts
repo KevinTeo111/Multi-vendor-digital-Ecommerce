@@ -14,8 +14,8 @@ export class WebhooksController {
   constructor(private readonly webhooks: WebhooksService) {}
 
   /**
-   * Payment provider callback. The gateway adapter authenticates the request (Stripe signs the raw
-   * body, Mercado Pago signs the query-string id); the event is then stored and processed once.
+   * Payment provider callback. The gateway adapter authenticates the request (Mercado Pago signs the
+   * notification id and timestamp); the event is then stored and processed once.
    */
   @Public()
   @Post('payments')

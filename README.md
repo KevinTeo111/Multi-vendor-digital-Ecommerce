@@ -206,7 +206,7 @@ production logs only that it was skipped (a reset link must never reach the logs
 ```bash
 npm run format:check        # Prettier (npm run format to fix)
 npm run typecheck           # all workspaces
-npm test -w apps/api        # unit tests (money, withdrawal rules, product lifecycle, settings, pagination, Stripe + Mercado Pago webhooks, module wiring)
+npm test -w apps/api        # unit tests (money, withdrawal rules, product lifecycle, settings, pagination, Mercado Pago webhooks, module wiring)
 npm run build               # all workspaces
 ```
 
@@ -319,30 +319,6 @@ user's app, whose `APP_USR-` credentials count as production; go-live: the main 
   disputes). Open disputes (`in_mediation`) change nothing until decided. Every path is idempotent.
 - A seller whose credit was already withdrawn goes negative: new sales cover it, and withdrawals
   cannot be approved or marked paid while the available balance is below zero.
-
-### Stripe (kept as an alternative; Pix is invite-only for Brazilian accounts)
-
-`PAYMENT_GATEWAY=stripe` uses `apps/api/src/modules/payments/gateway/stripe.gateway.ts`:
-
-- Orders use Stripe Checkout in payment mode. Payment methods are whatever is enabled in the Stripe
-  dashboard (card, Pix and boleto for a Brazilian account). The order stores the Checkout Session id;
-  `checkout.session.completed` / `async_payment_succeeded` mark it paid, `async_payment_failed` /
-  `expired` mark it failed.
-- Paid plans use Stripe Checkout in subscription mode. The adapter creates a Stripe Price per plan
-  on first use (`syncPlan`) and recreates it when the admin changes the price or interval. The
-  subscription row first holds the session id; the webhook swaps in the real `sub_…` id and the
-  billing period. `invoice.paid` renews, `invoice.payment_failed` sets past due,
-  `customer.subscription.deleted` cancels. Cancelling sets `cancel_at_period_end`, so access lasts
-  until the paid period ends. Free plans never touch Stripe.
-- Payouts stay manual (admin pays by PIX or bank transfer and marks the withdrawal paid). Automated
-  payouts would use Stripe Connect and are a Phase 2 item.
-- Webhook endpoint: `POST /api/webhooks/payments`, verified with `STRIPE_WEBHOOK_SECRET` against the raw
-  body. Events to subscribe: `checkout.session.completed`, `checkout.session.async_payment_succeeded`,
-  `checkout.session.async_payment_failed`, `checkout.session.expired`, `invoice.paid`,
-  `invoice.payment_failed`, `customer.subscription.deleted`.
-
-Required variables: `STRIPE_SECRET_KEY` (`sk_test_…` / `sk_live_…`) and `STRIPE_WEBHOOK_SECRET` (`whsec_…`).
-Nothing Stripe-related is exposed to the browser.
 
 ## Not in the MVP (planned next)
 

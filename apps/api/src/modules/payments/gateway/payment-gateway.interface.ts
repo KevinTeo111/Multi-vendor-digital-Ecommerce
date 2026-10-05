@@ -1,5 +1,5 @@
 /**
- * Gateway abstraction. Everything that talks to Stripe (or any other provider) lives behind this
+ * Gateway abstraction. Everything that talks to the payment provider lives behind this
  * interface so the rest of the system never depends on a vendor SDK. Amounts are integer cents.
  */
 
@@ -132,7 +132,7 @@ export type WebhookQuery = Record<string, unknown>;
 export class WebhookRejectedError extends Error {}
 
 export interface PaymentGateway {
-  readonly name: 'mock' | 'stripe' | 'mercadopago';
+  readonly name: 'mock' | 'mercadopago';
   /** Whether createRecipient/createTransfer are implemented. Manual payout mode works regardless. */
   readonly supportsPayouts: boolean;
 

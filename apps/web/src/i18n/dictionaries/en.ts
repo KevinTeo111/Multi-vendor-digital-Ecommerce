@@ -563,6 +563,21 @@ const en = {
     joined: 'Joined',
     suspend: 'Suspend',
     suspendConfirm: 'Suspend this seller? Their products go offline immediately.',
+    finance: 'Finance',
+    financeTitle: 'Finance: {store}',
+    adjustTitle: 'Balance adjustment',
+    adjustDescription:
+      'Manual correction of the seller’s available balance, for example a goodwill credit or the recovery of an amount paid by mistake. It is recorded in the ledger with the reason and in the audit log.',
+    adjustDirection: 'Direction',
+    credit: 'Credit (add to the balance)',
+    debit: 'Debit (remove from the balance)',
+    adjustAmount: 'Amount (R$)',
+    adjustReason: 'Reason (shown to the seller in the ledger)',
+    adjustSubmit: 'Apply adjustment {amount}',
+    adjustConfirm: 'Apply an adjustment of {amount} to this seller’s balance?',
+    adjustDone: 'Adjustment recorded.',
+    adjustNegative:
+      'This debit takes the available balance below zero. The seller cannot withdraw until new sales cover the difference.',
     reactivate: 'Reactivate',
     // users
     usersTitle: 'Users',

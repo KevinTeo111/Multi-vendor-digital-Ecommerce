@@ -1,4 +1,10 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { LedgerEntryStatus, LedgerEntryType, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PaginationDto, findPage } from '../../common/dto/pagination.dto';
@@ -86,8 +92,16 @@ export class LedgerService implements OnModuleInit, OnModuleDestroy {
     );
   }
 
-  /** Manual correction by an admin. Positive credits, negative debits; always immediately available. */
+  /**
+   * Manual correction by an admin. Positive credits, negative debits; always immediately available.
+   * A debit may take the available balance below zero: withdrawals stay blocked until sales cover it.
+   */
   async adjust(vendorId: string, amountCents: number, description: string) {
+    const vendor = await this.prisma.vendor.findUnique({
+      where: { id: vendorId },
+      select: { id: true },
+    });
+    if (!vendor) throw new NotFoundException('Vendor not found');
     return this.prisma.ledgerEntry.create({
       data: {
         vendorId,

@@ -51,14 +51,10 @@ services:
       - key: DOWNLOAD_URL_TTL_SECONDS
         value: 300
       - key: PAYMENT_GATEWAY
-        value: mock # "mercadopago" once MP_* are set ("stripe" is kept as an alternative)
+        value: mock # "mercadopago" once MP_* are set
       - key: MP_ACCESS_TOKEN
         sync: false
       - key: MP_WEBHOOK_SECRET
-        sync: false
-      - key: STRIPE_SECRET_KEY
-        sync: false
-      - key: STRIPE_WEBHOOK_SECRET
         sync: false
       - key: BREVO_API_KEY
         sync: false # empty = e-mails are not sent

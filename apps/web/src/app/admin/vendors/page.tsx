@@ -116,25 +116,33 @@ function VendorsView() {
                   </Td>
                   <Td className="text-xs">{formatDate(v.createdAt)}</Td>
                   <Td>
-                    {v.status !== 'SUSPENDED' ? (
-                      <Button
-                        size="sm"
-                        variant="danger"
-                        onClick={() => setVendorStatus(v.id, 'SUSPENDED')}
-                        loading={action.busy}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Link
+                        href={`/admin/vendors/${v.id}`}
+                        className="text-sm font-semibold text-brand-600 hover:underline"
                       >
-                        {t('admin.suspend')}
-                      </Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => setVendorStatus(v.id, 'ACTIVE')}
-                        loading={action.busy}
-                      >
-                        {t('admin.reactivate')}
-                      </Button>
-                    )}
+                        {t('admin.finance')}
+                      </Link>
+                      {v.status !== 'SUSPENDED' ? (
+                        <Button
+                          size="sm"
+                          variant="danger"
+                          onClick={() => setVendorStatus(v.id, 'SUSPENDED')}
+                          loading={action.busy}
+                        >
+                          {t('admin.suspend')}
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => setVendorStatus(v.id, 'ACTIVE')}
+                          loading={action.busy}
+                        >
+                          {t('admin.reactivate')}
+                        </Button>
+                      )}
+                    </div>
                   </Td>
                 </tr>
               ))}

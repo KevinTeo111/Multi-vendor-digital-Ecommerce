@@ -122,8 +122,8 @@ export class SubscriptionsService {
 
   /**
    * Subscribes the vendor to a plan.
-   * Free plans activate locally. Paid plans go through the gateway: with Stripe the vendor is redirected
-   * to a hosted checkout and the subscription becomes ACTIVE when the webhook confirms payment.
+   * Free plans activate locally. Paid plans go through the gateway: the vendor is redirected to the
+   * provider's hosted checkout and the subscription becomes ACTIVE when the webhook confirms payment.
    * Switching plans cancels the previous subscription when the new one activates (no proration in the MVP).
    */
   async subscribe(vendorId: string, planId: string) {
