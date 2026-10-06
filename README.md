@@ -175,6 +175,14 @@ production logs only that it was skipped (a reset link must never reach the logs
   R$ 1,00. The cart previews the discount with `POST /checkout/preview` using the same pricing code
   as `POST /checkout`.
 
+## Legal pages
+
+`/terms`, `/privacy` and `/contact` are rendered from `apps/web/src/content/legal/{pt-BR,en}.ts`:
+original texts written for this marketplace (licences, refunds, seller payouts, LGPD). The operator's
+legal name, CNPJ, address and contact e-mail come from **Admin → Settings → Legal pages**; while they
+are empty the pages fall back to the site name and omit those lines. Bump `UPDATED` in both files
+whenever the wording changes.
+
 ## API surface (all under `/api`)
 
 | Area | Routes |

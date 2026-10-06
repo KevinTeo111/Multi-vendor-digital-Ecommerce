@@ -13,6 +13,7 @@ type FieldDef = {
   label: string;
   kind: 'text' | 'money' | 'int' | 'percent' | 'list' | 'select';
   hint?: string;
+  optional?: boolean;
   options?: Array<{ value: string; label: string }>;
 };
 
@@ -84,6 +85,21 @@ export default function AdminSettingsPage() {
           label: t('admin.allowedExtensions'),
           kind: 'list',
           hint: t('admin.allowedExtensionsHint'),
+        },
+      ],
+    },
+    {
+      title: t('admin.groupLegal'),
+      fields: [
+        { key: 'legal.company_name', label: t('admin.legalCompany'), kind: 'text', optional: true },
+        { key: 'legal.cnpj', label: t('admin.legalCnpj'), kind: 'text', optional: true },
+        { key: 'legal.address', label: t('admin.legalAddress'), kind: 'text', optional: true },
+        {
+          key: 'legal.contact_email',
+          label: t('admin.legalEmail'),
+          kind: 'text',
+          hint: t('admin.legalHint'),
+          optional: true,
         },
       ],
     },
@@ -166,7 +182,7 @@ export default function AdminSettingsPage() {
                       min={0}
                       value={form[f.key] ?? ''}
                       onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
-                      required
+                      required={!f.optional}
                     />
                   )}
                 </Field>

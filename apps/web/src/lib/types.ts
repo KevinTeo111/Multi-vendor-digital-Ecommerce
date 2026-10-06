@@ -343,6 +343,8 @@ export interface PublicSettings {
   payoutMode: 'manual' | 'gateway';
   /** Provider fee built into listed prices (bps). */
   gatewayFeeBps: number;
+  /** Operator identity for the legal pages; empty strings until the admin fills them in. */
+  legal: { companyName: string; cnpj: string; address: string; contactEmail: string };
 }
 
 export interface AdminVendor {

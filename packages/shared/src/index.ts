@@ -13,7 +13,20 @@ export const SETTING_KEYS = {
   PAYOUT_MODE: 'finance.payout_mode',
   /** Payment provider fee (bps) built into listed prices, so buyers pay exactly the listed price and sellers keep their own price minus commission. */
   GATEWAY_FEE_BPS: 'finance.gateway_fee_bps',
+  /** Operator identity shown on the legal pages. May be empty until the client provides it. */
+  LEGAL_COMPANY_NAME: 'legal.company_name',
+  LEGAL_CNPJ: 'legal.cnpj',
+  LEGAL_ADDRESS: 'legal.address',
+  LEGAL_CONTACT_EMAIL: 'legal.contact_email',
 } as const;
+
+/** Settings that may be left empty. */
+export const OPTIONAL_SETTING_KEYS: readonly string[] = [
+  SETTING_KEYS.LEGAL_COMPANY_NAME,
+  SETTING_KEYS.LEGAL_CNPJ,
+  SETTING_KEYS.LEGAL_ADDRESS,
+  SETTING_KEYS.LEGAL_CONTACT_EMAIL,
+];
 
 export const PAYOUT_MODES = ['manual', 'gateway'] as const;
 export type PayoutMode = (typeof PAYOUT_MODES)[number];
@@ -30,6 +43,10 @@ export interface SettingDefaults {
   [SETTING_KEYS.ALLOWED_FILE_EXTENSIONS]: string[];
   [SETTING_KEYS.PAYOUT_MODE]: PayoutMode;
   [SETTING_KEYS.GATEWAY_FEE_BPS]: number;
+  [SETTING_KEYS.LEGAL_COMPANY_NAME]: string;
+  [SETTING_KEYS.LEGAL_CNPJ]: string;
+  [SETTING_KEYS.LEGAL_ADDRESS]: string;
+  [SETTING_KEYS.LEGAL_CONTACT_EMAIL]: string;
 }
 
 export const SETTING_DEFAULTS: SettingDefaults = {
@@ -42,6 +59,10 @@ export const SETTING_DEFAULTS: SettingDefaults = {
   [SETTING_KEYS.ALLOWED_FILE_EXTENSIONS]: ['zip', 'rar', '7z', 'pdf', 'epub', 'mp4', 'mp3'],
   [SETTING_KEYS.PAYOUT_MODE]: 'manual',
   [SETTING_KEYS.GATEWAY_FEE_BPS]: 0, // set to the provider's real rate in Admin → Settings
+  [SETTING_KEYS.LEGAL_COMPANY_NAME]: '',
+  [SETTING_KEYS.LEGAL_CNPJ]: '',
+  [SETTING_KEYS.LEGAL_ADDRESS]: '',
+  [SETTING_KEYS.LEGAL_CONTACT_EMAIL]: '',
 };
 
 /** Highest provider fee the platform accepts (20%); above that the setting is surely a typo. */

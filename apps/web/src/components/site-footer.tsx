@@ -78,9 +78,15 @@ export function SiteFooter() {
             © {new Date().getFullYear()} {BRAND.name}. {t('nav.rights')}
           </span>
           <div className="flex items-center gap-5">
-            <span>{t('nav.privacy')}</span>
-            <span>{t('nav.terms')}</span>
-            <span>{t('nav.contact')}</span>
+            <Link href="/privacy" className="hover:text-white">
+              {t('nav.privacy')}
+            </Link>
+            <Link href="/terms" className="hover:text-white">
+              {t('nav.terms')}
+            </Link>
+            <Link href="/contact" className="hover:text-white">
+              {t('nav.contact')}
+            </Link>
             <a
               href="#top"
               className="group inline-flex items-center gap-1 text-brand-500 hover:text-cyan-400"

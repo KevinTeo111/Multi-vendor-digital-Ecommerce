@@ -630,6 +630,13 @@ const ptBR: Dictionary = {
     groupSite: 'Site',
     groupFinance: 'Financeiro',
     groupProducts: 'Produtos',
+    groupLegal: 'Páginas legais',
+    legalCompany: 'Razão social (opcional)',
+    legalCnpj: 'CNPJ (opcional)',
+    legalAddress: 'Endereço da sede (opcional)',
+    legalEmail: 'E-mail de contato / privacidade (opcional)',
+    legalHint:
+      'Aparece em Contato, Termos e Privacidade. Enquanto vazio, as páginas mostram só o nome do site.',
     siteName: 'Nome do site',
     currency: 'Moeda (código ISO)',
     currencyHint: 'Usada em novos pedidos e planos',

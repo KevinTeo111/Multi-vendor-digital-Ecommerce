@@ -4,6 +4,7 @@ import {
   BPS_DENOMINATOR,
   MAX_GATEWAY_FEE_BPS,
   PAYOUT_MODES,
+  OPTIONAL_SETTING_KEYS,
   SETTING_DEFAULTS,
   SETTING_KEYS,
   SettingDefaults,
@@ -54,6 +55,12 @@ export class SettingsService {
       allowedFileExtensions: all[SETTING_KEYS.ALLOWED_FILE_EXTENSIONS],
       payoutMode: all[SETTING_KEYS.PAYOUT_MODE],
       gatewayFeeBps: all[SETTING_KEYS.GATEWAY_FEE_BPS],
+      legal: {
+        companyName: all[SETTING_KEYS.LEGAL_COMPANY_NAME],
+        cnpj: all[SETTING_KEYS.LEGAL_CNPJ],
+        address: all[SETTING_KEYS.LEGAL_ADDRESS],
+        contactEmail: all[SETTING_KEYS.LEGAL_CONTACT_EMAIL],
+      },
     };
   }
 
@@ -122,7 +129,8 @@ export class SettingsService {
       return;
     }
     if (typeof expected === 'string') {
-      if (typeof value !== 'string' || value.trim().length === 0)
+      if (typeof value !== 'string') fail('expected a string');
+      if ((value as string).trim().length === 0 && !OPTIONAL_SETTING_KEYS.includes(key))
         fail('expected a non-empty string');
       if (
         key === SETTING_KEYS.PAYOUT_MODE &&

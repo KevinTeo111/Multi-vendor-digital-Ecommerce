@@ -640,6 +640,13 @@ const en = {
     groupSite: 'Site',
     groupFinance: 'Finance',
     groupProducts: 'Products',
+    groupLegal: 'Legal pages',
+    legalCompany: 'Company legal name (optional)',
+    legalCnpj: 'CNPJ (optional)',
+    legalAddress: 'Registered address (optional)',
+    legalEmail: 'Contact / privacy e-mail (optional)',
+    legalHint:
+      'Shown on Contact, Terms and Privacy. Until filled in, the pages show only the site name.',
     siteName: 'Site name',
     currency: 'Currency (ISO code)',
     currencyHint: 'Used for new orders and plans',
