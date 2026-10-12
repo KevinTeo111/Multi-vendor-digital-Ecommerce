@@ -33,7 +33,10 @@ export function Logo({
           <span
             className={`block text-base font-extrabold tracking-tight ${light ? 'text-white' : 'text-navy-900'}`}
           >
-            {BRAND.name}
+            {BRAND.wordmark.base}
+            <span className={light ? 'text-cyan-400' : 'text-brand-600'}>
+              {BRAND.wordmark.accent}
+            </span>
           </span>
           <span className={`block text-[11px] ${light ? 'text-slate-300' : 'text-slate-500'}`}>
             {t('common.tagline')}

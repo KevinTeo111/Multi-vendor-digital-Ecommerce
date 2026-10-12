@@ -39,7 +39,7 @@ const schema = z.object({
   BREVO_API_KEY: z.string().optional(),
   /** Sender address; it must be a verified sender (or on an authenticated domain) in Brevo. */
   MAIL_FROM_EMAIL: z.string().email().optional(),
-  MAIL_FROM_NAME: z.string().min(1).default('DigiMarket'),
+  MAIL_FROM_NAME: z.string().min(1).default('CampusDev'),
 
   /** In-process housekeeping timers (settle pending orders, expire lapsed plans). */
   JOBS_ENABLED: z

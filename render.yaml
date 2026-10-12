@@ -61,4 +61,4 @@ services:
       - key: MAIL_FROM_EMAIL
         sync: false # a verified sender in Brevo
       - key: MAIL_FROM_NAME
-        value: DigiMarket
+        value: CampusDev
