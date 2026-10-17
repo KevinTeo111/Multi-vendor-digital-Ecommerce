@@ -51,7 +51,7 @@ services:
       - key: DOWNLOAD_URL_TTL_SECONDS
         value: 300
       - key: PAYMENT_GATEWAY
-        value: mock # "mercadopago" once MP_* are set
+        sync: false # "mock" or "mercadopago"; set in the dashboard so Blueprint syncs never reset it
       - key: MP_ACCESS_TOKEN
         sync: false
       - key: MP_WEBHOOK_SECRET
